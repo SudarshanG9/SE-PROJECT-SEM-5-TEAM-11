@@ -1,121 +1,96 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [base, setBase] = useState('')
+  const [branchA, setBranchA] = useState('')
+  const [branchB, setBranchB] = useState('')
+  const [result, setResult] = useState('')
+
+  function handleMerge() {
+    setResult(
+      'Placeholder merge result\n\n' +
+      'Base:\n' + (base || '(empty)') + '\n\n' +
+      'Branch A:\n' + (branchA || '(empty)') + '\n\n' +
+      'Branch B:\n' + (branchB || '(empty)') + '\n\n' +
+      'Real merge logic will be integrated later.'
+    )
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <main className="app">
+      <header className="page-header">
+        <p className="eyebrow">DEVELOPER TOOL</p>
+        <h1>Three-Way Merge Simulator</h1>
+        <p className="subtitle">
+          Compare your base code with two branches and simulate a merge.
+        </p>
+      </header>
+
+      <section className="editor-grid">
+        <div className="editor-card">
+          <label htmlFor="base">Base</label>
+          <p className="editor-description">The original version</p>
+          <textarea
+            id="base"
+            value={base}
+            onChange={(e) => setBase(e.target.value)}
+            placeholder="Enter base code here..."
+            spellCheck="false"
+          />
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
+
+        <div className="editor-card">
+          <label htmlFor="branch-a">Branch A</label>
+          <p className="editor-description">First set of changes</p>
+          <textarea
+            id="branch-a"
+            value={branchA}
+            onChange={(e) => setBranchA(e.target.value)}
+            placeholder="Enter Branch A code here..."
+            spellCheck="false"
+          />
         </div>
+
+        <div className="editor-card">
+          <label htmlFor="branch-b">Branch B</label>
+          <p className="editor-description">Second set of changes</p>
+          <textarea
+            id="branch-b"
+            value={branchB}
+            onChange={(e) => setBranchB(e.target.value)}
+            placeholder="Enter Branch B code here..."
+            spellCheck="false"
+          />
+        </div>
+      </section>
+
+      <div className="actions">
+        <button type="button" onClick={handleMerge}>
+          Simulate Merge
+        </button>
+
         <button
           type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+          className="clear-button"
+          onClick={() => {
+            setBase('')
+            setBranchA('')
+            setBranchB('')
+            setResult('')
+          }}
         >
-          Count is {count}
+          Clear All
         </button>
-      </section>
+      </div>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      {result && (
+        <section className="result-card" aria-live="polite">
+          <h2>Merge Result</h2>
+          <pre>{result}</pre>
+        </section>
+      )}
+    </main>
   )
 }
 
