@@ -1,6 +1,7 @@
 
 const express = require("express");
 const cors = require("cors");
+const { mergeCode } = require("./merge");
 
 const app = express();
 
@@ -37,16 +38,13 @@ app.post("/api/merge", (req, res) => {
     });
   }
 
-  // Placeholder merge result — to be replaced with real merge logic
-  const mergedCode = `<<<<<<< Branch A\n${branchA}\n=======\n${branchB}\n>>>>>>> Branch B`;
-  const hasConflict = branchA !== branchB;
+  const result = mergeCode(base, branchA, branchB);
+  const hasConflict = result.conflicts && result.conflicts.length > 0;
 
   return res.status(200).json({
-    mergedCode,
+    mergedCode: result.mergedCode,
     hasConflict,
-    message: hasConflict
-      ? "Merge completed with conflicts. Please resolve them manually."
-      : "Merge completed successfully with no conflicts.",
+    message: result.message,
   });
 });
 
