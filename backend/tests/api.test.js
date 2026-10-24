@@ -14,4 +14,27 @@ describe("API basics", () => {
 
     expect(response.headers["access-control-allow-origin"]).toBeDefined();
   });
+
+  it("rejects merge requests with missing inputs", async () => {
+    const response = await request(app).post("/api/merge").send({
+      base: "base",
+      branchA: "branch A",
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("Missing required fields");
+  });
+
+  it("rejects merge requests with non-string inputs", async () => {
+    const response = await request(app).post("/api/merge").send({
+      base: "base",
+      branchA: 42,
+      branchB: "branch B",
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe(
+      "base, branchA, and branchB must be strings."
+    );
+  });
 });
