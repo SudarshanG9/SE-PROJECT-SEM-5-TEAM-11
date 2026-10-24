@@ -18,15 +18,14 @@ app.get("/api/health", (req, res) => {
 /**
  * POST /api/merge
  *
- * Accepts three code strings (base, branchA, branchB) and returns a
- * placeholder merge result. The real merge algorithm will replace the
- * placeholder logic in a future iteration.
+ * Accepts three code strings (base, branchA, branchB) and returns the merge
+ * result, including any conflict details.
  *
  * Request body:
  *   { base: string, branchA: string, branchB: string }
  *
  * Response:
- *   { mergedCode: string, hasConflict: boolean, message: string }
+ *   { mergedCode: string, hasConflict: boolean, message: string, conflicts: array }
  */
 app.post("/api/merge", (req, res) => {
   const { base, branchA, branchB } = req.body;
@@ -45,6 +44,7 @@ app.post("/api/merge", (req, res) => {
     mergedCode: result.mergedCode,
     hasConflict,
     message: result.message,
+    conflicts: result.conflicts,
   });
 });
 

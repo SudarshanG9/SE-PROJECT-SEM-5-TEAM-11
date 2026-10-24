@@ -1,20 +1,68 @@
-import { useState } from 'react'
-import './App.css'
+import { useState } from "react";
+import "./App.css";
 
 function App() {
-  const [base, setBase] = useState('')
-  const [branchA, setBranchA] = useState('')
-  const [branchB, setBranchB] = useState('')
-  const [result, setResult] = useState('')
+  const [base, setBase] = useState("");
+  const [branchA, setBranchA] = useState("");
+  const [branchB, setBranchB] = useState("");
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  function handleMerge() {
-    setResult(
-      'Placeholder merge result\n\n' +
-      'Base:\n' + (base || '(empty)') + '\n\n' +
-      'Branch A:\n' + (branchA || '(empty)') + '\n\n' +
-      'Branch B:\n' + (branchB || '(empty)') + '\n\n' +
-      'Real merge logic will be integrated later.'
-    )
+  async function handleMerge() {
+    const missingInputs = [
+      !base.trim() && "Base",
+      !branchA.trim() && "Branch A",
+      !branchB.trim() && "Branch B",
+    ].filter(Boolean);
+
+    setResult(null);
+    setError("");
+
+    if (missingInputs.length > 0) {
+      setError(`Please provide ${missingInputs.join(", ")}.`);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch("http://localhost:3000/api/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base, branchA, branchB }),
+      });
+
+      let payload;
+      try {
+        payload = await response.json();
+      } catch {
+        setError("The merge service returned an unreadable response.");
+        return;
+      }
+
+      if (!response.ok) {
+        setError(payload?.error || `The merge request failed (HTTP ${response.status}).`);
+        return;
+      }
+
+      if (
+        typeof payload?.mergedCode !== "string" ||
+        typeof payload.hasConflict !== "boolean" ||
+        typeof payload.message !== "string" ||
+        !Array.isArray(payload.conflicts)
+      ) {
+        setError("The merge service returned an invalid merge result.");
+        return;
+      }
+
+      setResult(payload);
+    } catch (requestError) {
+      const detail =
+        requestError instanceof Error ? `: ${requestError.message}` : ".";
+      setError(`Unable to reach the merge service${detail}`);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -66,8 +114,8 @@ function App() {
       </section>
 
       <div className="actions">
-        <button type="button" onClick={handleMerge}>
-          Simulate Merge
+        <button type="button" onClick={handleMerge} disabled={isLoading}>
+          {isLoading ? "Merging..." : "Simulate Merge"}
         </button>
 
         <button
@@ -75,23 +123,62 @@ function App() {
           className="clear-button"
           onClick={() => {
             setBase('')
-            setBranchA('')
-            setBranchB('')
-            setResult('')
+            setBranchA("");
+            setBranchB("");
+            setResult(null);
+            setError("");
           }}
         >
           Clear All
         </button>
       </div>
 
+      {error && (
+        <p className="error-message" role="alert">
+          {error}
+        </p>
+      )}
+
       {result && (
         <section className="result-card" aria-live="polite">
-          <h2>Merge Result</h2>
-          <pre>{result}</pre>
+          <p>{result.message}</p>
+          <h2>Merge status</h2>
+          <p>
+            {result.hasConflict
+              ? "Conflicts require attention"
+              : "Successful merge"}
+          </p>
+          <h2>Merged output</h2>
+          <pre>{result.mergedCode}</pre>
+
+          {result.conflicts.length > 0 && (
+            <>
+              <h2>Conflict details</h2>
+              {result.conflicts.map((conflict) => (
+                <article key={conflict.id} className="conflict">
+                  <h3>
+                    Conflict {conflict.id} (line
+                    {conflict.startLine === conflict.endLine ? "" : "s"}{" "}
+                    {conflict.startLine}
+                    {conflict.startLine === conflict.endLine
+                      ? ""
+                      : `-${conflict.endLine}`}
+                    )
+                  </h3>
+                  <p>Base</p>
+                  <pre>{conflict.base}</pre>
+                  <p>Branch A</p>
+                  <pre>{conflict.branchA}</pre>
+                  <p>Branch B</p>
+                  <pre>{conflict.branchB}</pre>
+                </article>
+              ))}
+            </>
+          )}
         </section>
       )}
     </main>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import App from "./App";
@@ -137,7 +138,10 @@ describe("Frontend merge features", () => {
       expect(screen.getByRole("heading", { name: "Merge status" })).toBeInTheDocument();
       expect(screen.getByText("Successful merge")).toBeInTheDocument();
       expect(screen.getByRole("heading", { name: "Merged output" })).toBeInTheDocument();
-      expect(screen.getByText("const value = 2;")).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("heading", { name: "Merged output" }).parentElement)
+          .getByText("const value = 2;")
+      ).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Conflict details" })).not.toBeInTheDocument();
     });
 
@@ -169,10 +173,11 @@ describe("Frontend merge features", () => {
       expect(screen.getByText("Conflicts require attention")).toBeInTheDocument();
       expect(screen.getByRole("heading", { name: "Merged output" })).toBeInTheDocument();
       expect(screen.getByRole("heading", { name: "Conflict details" })).toBeInTheDocument();
-      expect(screen.getByText("const value = 1;")).toBeInTheDocument();
-      expect(screen.getByText("const value = 2;")).toBeInTheDocument();
-      expect(screen.getByText("const value = 3;")).toBeInTheDocument();
-      expect(screen.getByText(/line 1/i)).toBeInTheDocument();
+      const resultCard = screen.getByRole("heading", { name: "Conflict details" }).parentElement;
+      expect(within(resultCard).getByText("const value = 1;")).toBeInTheDocument();
+      expect(within(resultCard).getByText("const value = 2;")).toBeInTheDocument();
+      expect(within(resultCard).getByText("const value = 3;")).toBeInTheDocument();
+      expect(within(resultCard).getByText(/line 1/i)).toBeInTheDocument();
     });
   });
 });
