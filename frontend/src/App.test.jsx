@@ -9,7 +9,7 @@ import {
 import "@testing-library/jest-dom/vitest";
 import App from "./App";
 
-const mergeEndpoint = "http://localhost:3000/api/merge";
+const mergeEndpoint = "/api/merge";
 const inputKeys = {
   Base: "base",
   "Branch A": "branchA",
@@ -149,6 +149,8 @@ describe("Frontend merge features", () => {
         conflicts: [
           {
             id: 1,
+            outputStartLine: 1, outputEndLine: 5,
+            branchALines: ["const value = 2;"], branchBLines: ["const value = 3;"],
             startLine: 1,
             endLine: 1,
             base: "const value = 1;",
@@ -163,7 +165,7 @@ describe("Frontend merge features", () => {
       fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
 
       expect(
-        await screen.findByText("Merge completed with 1 conflict(s)")
+        await screen.findByText("1 unresolved conflict(s)")
       ).toBeInTheDocument();
       expect(screen.getByRole("heading", { name: "Merge status" })).toBeInTheDocument();
       expect(screen.getByText("Conflicts require attention")).toBeInTheDocument();
@@ -176,3 +178,4 @@ describe("Frontend merge features", () => {
     });
   });
 });
+

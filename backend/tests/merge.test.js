@@ -79,3 +79,36 @@ describe("mergeCode", () => {
     expect(() => mergeCode(null, "a", "b")).toThrow(TypeError);
   });
 });
+
+
+describe('merge boundaries and resolution metadata', () => {
+  it('combines insertion before a line with an edit to that line', () => {
+    const result = mergeCode('x', 'before\nx', 'X');
+    expect(result.mergedCode).toBe('before\nX');
+    expect(result.conflicts).toEqual([]);
+  });
+  it('handles empty base without a phantom trailing line', () => {
+    const result = mergeCode('', 'left', 'right');
+    expect(result.mergedCode).toBe('<<<<<<< BRANCH A\nleft\n=======\nright\n>>>>>>> BRANCH B');
+    expect(result.conflicts[0]).toMatchObject({ startLine: 1, endLine: 1 });
+  });
+  it('provides exact ranges for multiple conflicts after insertion', () => {
+    const result = mergeCode('a\nkeep\nb', 'intro\nA\nkeep\nB', 'X\nkeep\nY');
+    expect(result.conflicts).toHaveLength(2);
+    for (const conflict of result.conflicts) {
+      expect(result.mergedCode.split('\n').slice(conflict.outputStartLine - 1, conflict.outputEndLine)).toEqual(['<<<<<<< BRANCH A', ...conflict.branchALines, '=======', ...conflict.branchBLines, '>>>>>>> BRANCH B']);
+    }
+  });
+  it('represents deletion as zero lines', () => {
+    const result = mergeCode('a\nb', 'b', 'A\nb');
+    expect(result.conflicts[0].branchALines).toEqual([]);
+    expect(result.conflicts[0].branchBLines).toEqual(['A']);
+  });
+  it('preserves trailing newlines and independent deletion/modification', () => {
+    expect(mergeCode('a\nb\nc\n', 'a\nc\n', 'a\nb\nC\n').mergedCode).toBe('a\nC\n');
+  });
+  it('bounds quadratic comparison work', () => {
+    const base = Array.from({length: 1500}, (_, i) => `line ${i}`).join('\n');
+    expect(() => mergeCode(base, `${base}\nA`, `${base}\nB`)).toThrow(RangeError);
+  });
+});

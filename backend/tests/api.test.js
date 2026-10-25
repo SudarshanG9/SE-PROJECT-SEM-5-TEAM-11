@@ -37,6 +37,7 @@ describe("POST /api/merge integration", () => {
     expect(response.body.mergedCode).toContain("<<<<<<< BRANCH A");
     expect(response.body.conflicts).toEqual([{
       id: 1, startLine: 1, endLine: 1,
+      outputStartLine: 1, outputEndLine: 5, branchALines: ["left"], branchBLines: ["right"],
       base: "original", branchA: "left", branchB: "right",
     }]);
   });
@@ -65,5 +66,25 @@ describe("POST /api/merge integration", () => {
     expect(response.status).toBe(200);
     expect(response.body.mergedCode).toBe("new file");
     expect(response.body.hasConflict).toBe(false);
+  });
+});
+
+
+describe('structured request errors', () => {
+  it('returns JSON for malformed JSON', async () => {
+    const response = await request(app).post('/api/merge').set('Content-Type', 'application/json').send('{bad');
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Invalid JSON request body.');
+  });
+  it('returns JSON for oversized bodies', async () => {
+    const response = await request(app).post('/api/merge').send({base: 'x'.repeat(110000), branchA: '', branchB: ''});
+    expect(response.status).toBe(413);
+    expect(response.body.error).toContain('too large');
+  });
+  it('rejects excessive comparison work', async () => {
+    const base = Array.from({length: 1500}, (_, i) => `line ${i}`).join('\n');
+    const response = await request(app).post('/api/merge').send({base, branchA: `${base}\nA`, branchB: `${base}\nB`});
+    expect(response.status).toBe(413);
+    expect(response.body.error).toContain('too large');
   });
 });
