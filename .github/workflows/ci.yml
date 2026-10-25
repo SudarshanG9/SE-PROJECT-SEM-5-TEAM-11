@@ -3,11 +3,6 @@ name: MergeLab CI
 
 on:
   push:
-    branches:
-      - main
-      - "feat/**"
-      - "fix/**"
-      - "ci/**"
 
   pull_request:
     branches:
@@ -64,5 +59,9 @@ jobs:
       - name: Run frontend tests
         run: npm test
 
+      - name: Lint frontend
+        run: npm run lint
+
       - name: Build frontend
         run: npm run build
+

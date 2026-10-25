@@ -54,6 +54,18 @@ app.post("/api/merge", (req, res) => {
   });
 });
 
+// Keep parser and merge failures in the same JSON contract as validation errors.
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  if (error.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "Invalid JSON request body." });
+  }
+  if (error.type === "entity.too.large" || error instanceof RangeError) {
+    return res.status(413).json({ error: "Input is too large. Use smaller code snippets." });
+  }
+  return res.status(500).json({ error: "Unable to merge these inputs. Please try again." });
+});
+
 const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {
@@ -63,3 +75,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+

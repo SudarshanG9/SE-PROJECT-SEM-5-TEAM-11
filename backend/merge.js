@@ -36,14 +36,19 @@ function mergeCode(base, branchA, branchB) {
     };
   }
 
-  const baseLines = base.split("\n");
-  const aLines = branchA.split("\n");
-  const bLines = branchB.split("\n");
+  const baseLines = base === "" ? [] : base.split("\n");
+  const aLines = branchA === "" ? [] : branchA.split("\n");
+  const bLines = branchB === "" ? [] : branchB.split("\n");
 
   // Find the changes each branch made relative to base.
   function getChanges(original, modified) {
     const n = original.length;
     const m = modified.length;
+
+    // Bound the quadratic LCS allocation for interactive use.
+    if ((n + 1) * (m + 1) > 2_000_000) {
+      throw new RangeError("Input is too large to compare. Use smaller code snippets.");
+    }
 
     // LCS table: longest common subsequence.
     const dp = Array.from(
@@ -128,11 +133,11 @@ function mergeCode(base, branchA, branchB) {
     }
 
     if (aInsertion) {
-      return a.start >= b.start && a.start < b.end;
+      return a.start > b.start && a.start < b.end;
     }
 
     if (bInsertion) {
-      return b.start >= a.start && b.start < a.end;
+      return b.start > a.start && b.start < a.end;
     }
 
     return a.start < b.end && b.start < a.end;
@@ -182,7 +187,8 @@ function mergeCode(base, branchA, branchB) {
           (item) =>
             item.source === source &&
             item.start >= start &&
-            item.end <= end
+            item.end <= end &&
+            (item.start !== item.end || start === end || (item.start > start && item.start < end))
         )
         .sort((a, b) => a.start - b.start || a.end - b.end);
 
@@ -242,6 +248,11 @@ function mergeCode(base, branchA, branchB) {
 
   for (const change of mergedChanges) {
     output.push(...baseLines.slice(cursor, change.start));
+    const conflict = conflicts.find((item) => item.start === change.start && change.source === "conflict");
+    if (conflict) {
+      conflict.outputStartLine = output.length + 1;
+      conflict.outputEndLine = output.length + change.replacement.length;
+    }
     output.push(...change.replacement);
     cursor = change.end;
   }
@@ -253,7 +264,11 @@ function mergeCode(base, branchA, branchB) {
     conflicts: conflicts.map((conflict, index) => ({
       id: index + 1,
       startLine: conflict.start + 1,
-      endLine: conflict.end,
+      endLine: Math.max(conflict.start + 1, conflict.end),
+      outputStartLine: conflict.outputStartLine,
+      outputEndLine: conflict.outputEndLine,
+      branchALines: conflict.branchA,
+      branchBLines: conflict.branchB,
       base: conflict.base.join("\n"),
       branchA: conflict.branchA.join("\n"),
       branchB: conflict.branchB.join("\n"),
@@ -266,3 +281,4 @@ function mergeCode(base, branchA, branchB) {
 }
 
 module.exports = { mergeCode };
+

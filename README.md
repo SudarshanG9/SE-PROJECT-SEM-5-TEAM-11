@@ -1,6 +1,6 @@
 # Web Code Merge Simulator
 
-A web-based simulator for three-way code merging. Users can create branches,
+A web-based simulator for three-way code merging. Users can paste a base file and two branch versions,
 simulate merges, view differences and conflicts, and resolve them.
 
 SE Project, Semester 5, Team 11.
@@ -103,9 +103,14 @@ Response `200`:
 
 Conflicting merges also return `200`, with `hasConflict: true`, conflict markers
 in `mergedCode`, and conflict details (`id`, `startLine`, `endLine`, `base`,
-`branchA`, `branchB`). Missing or non-string fields return `400` with an
+`branchA`, `branchB`, `branchALines`, `branchBLines`, `outputStartLine`,
+`outputEndLine`). Output ranges are 1-based and inclusive; line arrays preserve
+the distinction between deleting a region and keeping an empty line. Missing or non-string fields return `400` with an
 `{ "error": "..." }` response. Empty strings are valid API file content; the UI
-requires nonblank text in all three editors before submitting.
+requires nonblank text by default; select **Allow empty file inputs** to model
+new files, deletions, or whitespace-only content. Malformed JSON returns `400`;
+bodies exceeding the Express 100 KB limit or comparisons exceeding 2,000,000
+LCS cells return `413`, always with a JSON error message.
 
 ## Testing
 
@@ -131,3 +136,43 @@ npm test
 - Use a separate feature branch for each piece of work and open a pull request.
 - Keep `main` runnable: all tests must pass before merging.
 - Don't edit files another member is working on without coordinating first.
+
+
+## Using the simulator
+
+1. Base is the common original file; Branch A and Branch B are independently
+   edited copies. Load either built-in example under **How to use MergeLab**.
+2. **Compare versions** shows base-to-branch changes with line numbers and
+   explicit + / − indicators. Modifications appear as a removal plus an addition.
+3. **Simulate Merge** calls the API. Independent edits are combined; differing
+   edits in an overlapping region are preserved in a conflict block.
+4. For every conflict, select **Use Branch A**, **Use Branch B**, or enter text
+   and select **Apply custom resolution**. An empty custom resolution deletes
+   the region. The result remains incomplete until every conflict is resolved.
+5. Copy or download the displayed output. Exports include markers if conflicts
+   remain unresolved. Clipboard access may require HTTPS or localhost; download
+   remains available when clipboard access is denied.
+6. **Clear workspace** asks for confirmation and resets inputs, results, and
+   resolutions. Changing an input invalidates the old result.
+
+Non-conflicting example: Base `a\nb`, A `A\nb`, B `a\nB` produces `A\nB`.
+Conflicting example: Base `a`, A `A`, B `B` requires choosing or editing a result.
+Here `\n` represents a newline, not the two literal characters.
+
+## API routing and deployment
+
+During `npm run dev`, Vite proxies `/api` to `http://localhost:3000`.
+Production hosting must reverse-proxy `/api` to the backend, or build with
+`VITE_API_URL=https://your-api-host` (no trailing slash). The generated static
+frontend does not start or include the Express server. Run both services from
+this revision because manual resolution uses the additional conflict metadata.
+
+## Validation and scope
+
+CI runs backend tests, frontend tests, frontend lint, and the production build.
+Pushes to every branch and pull requests into main trigger checks. See
+[ISSUE_AUDIT.md](ISSUE_AUDIT.md) for the issue-by-issue assessment and test evidence.
+The simulator merges text snippets, not Git repositories or syntax trees;
+repeated-line alignments can differ from Git. Workspaces are held in browser
+memory and are cleared on refresh. The comparison algorithm is quadratic and
+intentionally bounded for interactive use.

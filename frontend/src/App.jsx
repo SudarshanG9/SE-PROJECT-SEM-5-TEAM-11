@@ -1,5 +1,6 @@
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { compareLines, examples, resolveOutput } from './mergeWorkspace'
 import './App.css'
 
 function App() {
@@ -9,6 +10,61 @@ function App() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [allowEmpty, setAllowEmpty] = useState(false)
+  const [comparisons, setComparisons] = useState(null)
+  const [resolutions, setResolutions] = useState({})
+  const [custom, setCustom] = useState({})
+  const [feedback, setFeedback] = useState('')
+  const revision = useRef(0)
+  const pending = useRef(false)
+  const unresolved = result ? result.conflicts.filter(c => !Object.hasOwn(resolutions, c.id)).length : 0
+  const mergedCode = result ? resolveOutput(result, resolutions) : ''
+
+  function invalidateResult() {
+    revision.current++
+    setResult(null)
+    setResolutions({})
+    setCustom({})
+    setComparisons(null)
+    setFeedback('')
+    setError('')
+  }
+
+  function loadExample(name) {
+    if ((base || branchA || branchB || result) && !window.confirm('Replace the current workspace with this example?')) return
+    invalidateResult()
+    setBase(examples[name].base)
+    setBranchA(examples[name].branchA)
+    setBranchB(examples[name].branchB)
+  }
+
+  async function handleCopy() {
+    const currentRevision = revision.current
+    try {
+      await navigator.clipboard.writeText(mergedCode)
+      if (currentRevision === revision.current) setFeedback('Merged code copied to clipboard.')
+    } catch {
+      if (currentRevision === revision.current) setFeedback('Unable to copy. Select the output or download the file instead.')
+    }
+  }
+
+  function handleDownload() {
+    const url = URL.createObjectURL(new Blob([mergedCode], { type: 'text/plain;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'merged-code.txt'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+    setFeedback('Merged code downloaded.')
+  }
+
+  function resolveConflict(conflict, lines) {
+    revision.current++
+    setResolutions(previous => ({ ...previous, [conflict.id]: lines }))
+    setFeedback('')
+  }
 
   const editors = [
     {
@@ -44,10 +100,10 @@ function App() {
   ]
 
   async function handleMerge() {
-    setError('')
-    setResult(null)
+    if (pending.current) return
+    invalidateResult()
 
-    if (!base.trim() || !branchA.trim() || !branchB.trim()) {
+    if (!allowEmpty && (!base.trim() || !branchA.trim() || !branchB.trim())) {
       setError(
         'Please fill in all three fields: Base, Branch A, and Branch B.'
       )
@@ -55,26 +111,43 @@ function App() {
     }
 
     setLoading(true)
+    pending.current = true
+    const currentRevision = revision.current
 
     try {
-      const response = await fetch('http://localhost:3000/api/merge', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/merge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ base, branchA, branchB }),
       })
-      const mergeResult = await response.json()
+      let mergeResult
+      try {
+        mergeResult = await response.json()
+      } catch {
+        throw new Error('The merge service returned an invalid response. Check that the backend is running.')
+      }
       if (!response.ok) {
         throw new Error(mergeResult.error || 'Unable to simulate the merge. Please try again.')
       }
-      setResult(mergeResult)
+      if (typeof mergeResult?.mergedCode !== 'string' || !Array.isArray(mergeResult.conflicts) || mergeResult.conflicts.some(c =>
+        !Number.isInteger(c.outputStartLine) || !Number.isInteger(c.outputEndLine) ||
+        c.outputStartLine < 1 || c.outputEndLine < c.outputStartLine ||
+        !Array.isArray(c.branchALines) || !Array.isArray(c.branchBLines))) {
+        throw new Error('The merge service returned an invalid result.')
+      }
+      if (currentRevision === revision.current) setResult(mergeResult)
     } catch (requestError) {
-      setError(requestError.message || 'Unable to reach the merge service. Please try again.')
+      if (currentRevision === revision.current) setError(requestError.message || 'Unable to reach the merge service. Please try again.')
     } finally {
+      pending.current = false
       setLoading(false)
     }
   }
 
   function handleClear() {
+    if ((base || branchA || branchB || result) && !window.confirm('Clear all inputs, results, and resolutions?')) return
+    invalidateResult()
+    setAllowEmpty(false)
     setBase('')
     setBranchA('')
     setBranchB('')
@@ -134,9 +207,20 @@ function App() {
           <span className="input-count">03 EDITORS</span>
         </div>
 
+        <details className="result-note">
+          <summary>How to use MergeLab</summary>
+          <p>Base is the common original file. Branch A and Branch B are independently edited versions. Compare versions to inspect changes, then simulate the merge.</p>
+          <p>Added lines use +, removed lines use −; a modification appears as a removal and an addition. Independent edits are combined. Different overlapping edits remain conflicts until you choose a branch or apply custom text for every conflict.</p>
+          <p>Empty files represent new files or deletions. Enable empty inputs explicitly when testing these cases. An empty custom resolution deletes that conflict section.</p>
+          <div className="actions">
+            <button className="clear-button" onClick={() => loadExample('clean')} disabled={loading}>Load non-conflicting example</button>
+            <button className="clear-button" onClick={() => loadExample('conflict')} disabled={loading}>Load conflicting example</button>
+          </div>
+        </details>
+
         <div className="editor-grid">
           {editors.map((editor) => {
-            const invalid = Boolean(error && !editor.value.trim())
+            const invalid = Boolean(error && !allowEmpty && !editor.value.trim())
 
             return (
               <section
@@ -182,9 +266,10 @@ function App() {
                     id={editor.id}
                     aria-label={editor.id === 'base' ? 'Base' : editor.title}
                     value={editor.value}
+                    disabled={loading}
                     onChange={(event) => {
                       editor.setter(event.target.value)
-                      setError('')
+                      invalidateResult()
                     }}
                     placeholder={editor.placeholder}
                     spellCheck="false"
@@ -250,9 +335,21 @@ function App() {
             Clear workspace
           </button>
 
-          <p className="action-hint">All three inputs are required</p>
+          <button className="clear-button" disabled={loading} onClick={() => setComparisons([
+            { title: 'Base → Branch A', ...compareLines(base, branchA) },
+            { title: 'Base → Branch B', ...compareLines(base, branchB) },
+          ])}>Compare versions</button>
+          <label className="action-hint"><input type="checkbox" checked={allowEmpty} disabled={loading} onChange={event => { setAllowEmpty(event.target.checked); invalidateResult() }} /> Allow empty file inputs</label>
         </div>
       </section>
+
+      {comparisons && <section className="comparison-grid" aria-label="Version comparisons">
+        {comparisons.map(comparison => <article className="result-card" key={comparison.title}>
+          <h3>{comparison.title}</h3>
+          <p>Base line / branch line · + added · − removed · modifications shown as removal + addition</p>
+          {comparison.error ? <p role="alert">{comparison.error}</p> : <pre className="diff-output">{comparison.lines.length ? comparison.lines.map((line, index) => <span className={`diff-line ${line.kind}`} key={index}>{`${line.oldLine || '–'} / ${line.newLine || '–'}  ${line.kind === 'added' ? '+' : line.kind === 'removed' ? '−' : ' '} ${line.text}\n`}</span>) : 'Both files are empty.'}</pre>}
+        </article>)}
+      </section>}
 
       <section className="result-section" aria-live="polite">
         <div className="section-heading">
@@ -283,20 +380,26 @@ function App() {
                 </div>
               </div>
 
-              <span className="preview-label">{result.hasConflict ? 'CONFLICT' : 'MERGED'}</span>
+              <span className="preview-label">{unresolved ? 'CONFLICT' : 'MERGED'}</span>
             </div>
 
             <div className="result-note">
               <h3>Merge status</h3>
-              <p>{result.hasConflict ? 'Conflicts require attention' : 'Successful merge'}</p>
-              <p>{result.message}</p>
+              <p>{unresolved ? 'Conflicts require attention' : 'Successful merge'}</p>
+              <p>{result.conflicts.length ? (unresolved ? `${unresolved} unresolved conflict(s)` : 'All conflicts resolved.') : result.message}</p>
             </div>
-            <pre className="result-output">{result.mergedCode}</pre>
+            <pre className="result-output" aria-label="Merged code">{mergedCode}</pre>
+            <div className="actions">
+              <button className="clear-button" onClick={handleCopy}>Copy merged code</button>
+              <button className="clear-button" onClick={handleDownload}>Download merged code</button>
+              {unresolved > 0 && <p className="action-hint">Exports include unresolved conflict markers.</p>}
+              {feedback && <p role="status">{feedback}</p>}
+            </div>
             {result.conflicts?.length > 0 && (
               <section className="result-note" aria-label="Conflict details">
                 <h3>Conflict details</h3>
                 {result.conflicts.map((conflict) => (
-                  <article key={conflict.id}>
+                  <article key={conflict.id} aria-label={`Conflict ${conflict.id}`}>
                     <h4>Conflict {conflict.id}: Line {conflict.startLine}{conflict.endLine > conflict.startLine ? `–${conflict.endLine}` : ''}</h4>
                     <p>Base</p>
                     <pre className="result-output">{conflict.base}</pre>
@@ -304,6 +407,14 @@ function App() {
                     <pre className="result-output">{conflict.branchA}</pre>
                     <p>Branch B</p>
                     <pre className="result-output">{conflict.branchB}</pre>
+                    <p>{Object.hasOwn(resolutions, conflict.id) ? 'Resolved' : 'Unresolved'}</p>
+                    <div className="actions">
+                      <button className="clear-button" onClick={() => resolveConflict(conflict, conflict.branchALines)}>Use Branch A</button>
+                      <button className="clear-button" onClick={() => resolveConflict(conflict, conflict.branchBLines)}>Use Branch B</button>
+                    </div>
+                    <label htmlFor={`resolution-${conflict.id}`}>Custom resolution for conflict {conflict.id}</label>
+                    <textarea className="resolution-input" id={`resolution-${conflict.id}`} value={custom[conflict.id] || ''} onChange={event => setCustom(previous => ({ ...previous, [conflict.id]: event.target.value }))} />
+                    <button className="clear-button" onClick={() => resolveConflict(conflict, custom[conflict.id] ? custom[conflict.id].split('\n') : [])}>Apply custom resolution</button>
                   </article>
                 ))}
               </section>
@@ -335,3 +446,4 @@ function App() {
 }
 
 export default App
+
