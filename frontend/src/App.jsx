@@ -127,9 +127,11 @@ function App() {
         throw new Error('The merge service returned an invalid response. Check that the backend is running.')
       }
       if (!response.ok) {
-        throw new Error(mergeResult.error || 'Unable to simulate the merge. Please try again.')
+        throw new Error(mergeResult?.error || 'Unable to simulate the merge. Please try again.')
       }
-      if (typeof mergeResult?.mergedCode !== 'string' || !Array.isArray(mergeResult.conflicts) || mergeResult.conflicts.some(c =>
+      if (typeof mergeResult?.mergedCode !== 'string' || typeof mergeResult.hasConflict !== 'boolean' ||
+        typeof mergeResult.message !== 'string' || !Array.isArray(mergeResult.conflicts) || mergeResult.conflicts.some(c =>
+        !c ||
         !Number.isInteger(c.outputStartLine) || !Number.isInteger(c.outputEndLine) ||
         c.outputStartLine < 1 || c.outputEndLine < c.outputStartLine ||
         !Array.isArray(c.branchALines) || !Array.isArray(c.branchBLines))) {

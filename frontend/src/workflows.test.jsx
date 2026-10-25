@@ -108,7 +108,18 @@ it('disables editing and duplicate submits during a request', async () => {
   render(<App />); fill('a', 'A', 'a'); click('Simulate Merge')
   expect(screen.getByLabelText('Base')).toBeDisabled()
   expect(screen.getByRole('button', {name: 'Processing...'})).toBeDisabled()
-  finish({ok: true, json: async () => ({mergedCode: 'A', conflicts: [], message: 'done'})})
+  finish({ok: true, json: async () => ({mergedCode: 'A', hasConflict: false, conflicts: [], message: 'done'})})
   await screen.findByLabelText('Merged code')
   expect(fetch).toHaveBeenCalledTimes(1); expect(screen.getByLabelText('Base')).toBeEnabled()
+})
+
+
+it.each([
+  { mergedCode: 'x', conflicts: [], message: 'done' },
+  { mergedCode: 'x', conflicts: [], hasConflict: false },
+  { mergedCode: 'x', conflicts: [null], hasConflict: true, message: 'conflict' },
+])('rejects incomplete response contracts: %j', async payload => {
+  fetch.mockResolvedValueOnce({ok: true, json: async () => payload})
+  render(<App />); fill('a', 'A', 'a'); click('Simulate Merge')
+  expect(await screen.findByRole('alert')).toHaveTextContent('invalid result')
 })
