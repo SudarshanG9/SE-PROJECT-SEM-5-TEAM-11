@@ -1,0 +1,299 @@
+.branch-section {
+  margin: 48px auto;
+  width: min(1180px, calc(100% - 48px));
+  color: var(--text-primary, #f4f1ff);
+}
+
+.branch-heading,
+.branch-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.branch-heading {
+  margin-bottom: 24px;
+}
+
+.branch-heading h2 {
+  margin: 5px 0 8px;
+  font-size: clamp(25px, 3vw, 34px);
+}
+
+.branch-count,
+.branch-panel-heading span {
+  color: var(--text-muted, #a9a4bb);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.branch-repository-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+  margin-bottom: 22px;
+}
+
+.branch-section label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-muted, #bcb6cf);
+  font-size: 13px;
+}
+
+.branch-section input,
+.branch-section select,
+.branch-section textarea {
+  width: 100%;
+  border: 1px solid var(--border, #393348);
+  border-radius: 9px;
+  padding: 12px 13px;
+  color: var(--text-primary, #f4f1ff);
+  background: var(--surface, #171522);
+  font: inherit;
+}
+
+.branch-section textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.branch-section input:focus,
+.branch-section select:focus,
+.branch-section textarea:focus {
+  outline: 2px solid #8b70ed;
+  outline-offset: 2px;
+}
+
+.branch-layout,
+.branch-details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.branch-panel {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--border, #393348);
+  border-radius: 14px;
+  background: var(--surface, #171522);
+}
+
+.branch-panel h3 {
+  margin: 0 0 18px;
+  font-size: 17px;
+}
+
+.branch-panel-heading {
+  margin-bottom: 16px;
+}
+
+.branch-panel-heading h3 {
+  margin: 0;
+}
+
+.branch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.branch-item {
+  padding: 12px;
+  border: 1px solid var(--border, #393348);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.branch-item.is-selected {
+  border-color: #8b70ed;
+  background: rgba(139, 112, 237, 0.09);
+}
+
+.branch-select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.branch-symbol {
+  color: #a990ff;
+  font-size: 22px;
+}
+
+.branch-item-info {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.branch-item-info strong {
+  overflow-wrap: anywhere;
+}
+
+.branch-item-info small,
+.branch-commit small {
+  color: var(--text-muted, #aaa4bb);
+  font-size: 11px;
+}
+
+.branch-protected {
+  color: #d5c5ff;
+  font-size: 11px;
+}
+
+.branch-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.branch-item-actions button {
+  padding: 6px 10px;
+  border: 1px solid var(--border, #393348);
+  border-radius: 7px;
+  color: var(--text-primary, #f4f1ff);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.branch-item-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.branch-item-actions .branch-delete {
+  color: #ff9caa;
+}
+
+.branch-create-form,
+.branch-commit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.branch-help,
+.branch-empty {
+  color: var(--text-muted, #aaa4bb);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.branch-help {
+  margin: 0 0 8px;
+}
+
+.branch-primary-button {
+  align-self: flex-start;
+  padding: 11px 17px;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  background: #7558d9;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.branch-primary-button:hover {
+  background: #886df0;
+}
+
+.branch-primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.branch-details-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.branch-detail-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 15px;
+  font-size: 17px;
+}
+
+.branch-panel p {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.branch-commit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.branch-commit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-left: 2px solid #8b70ed;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.branch-commit strong {
+  font-size: 13px;
+}
+
+.branch-commit code {
+  overflow-wrap: anywhere;
+  color: #bbaaff;
+  font-size: 11px;
+}
+
+.branch-message {
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #393348);
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.branch-error {
+  border-color: #a94d62;
+  color: #ffb2bf;
+  background: rgba(169, 77, 98, 0.1);
+}
+
+.branch-success {
+  border-color: #397d69;
+  color: #9de0c8;
+  background: rgba(57, 125, 105, 0.1);
+}
+
+@media (max-width: 760px) {
+  .branch-section {
+    width: min(100% - 28px, 600px);
+  }
+
+  .branch-layout,
+  .branch-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .branch-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

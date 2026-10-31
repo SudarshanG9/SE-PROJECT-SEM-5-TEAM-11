@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { compareLines, examples, resolveOutput } from './mergeWorkspace'
 import './App.css'
 import RepositoryManager from './RepositoryManager'
+import BranchManager from './BranchManager'
 
 function App() {
   const [base, setBase] = useState('')
@@ -197,6 +198,8 @@ function App() {
         </div>
       </header>
       <RepositoryManager />
+      <BranchManager />
+
       <section className="workspace" aria-label="Merge workspace">
         <div className="section-heading">
           <div>
