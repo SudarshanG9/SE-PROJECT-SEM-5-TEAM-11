@@ -2,6 +2,10 @@
 const express = require("express");
 const cors = require("cors");
 const { mergeCode } = require("./merge");
+const {
+  createRepository,
+  getRepositories,
+} = require("./repositories");
 
 const app = express();
 
@@ -14,6 +18,46 @@ app.get("/api/health", (req, res) => {
     message: "Code Merge Simulator API is running",
   });
 });
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "Code Merge Simulator API is running",
+  });
+});
+// Create a new repository
+app.post("/api/repositories", (req, res) => {
+  const { name, description = "" } = req.body || {};
+
+  if (typeof name !== "string" || !name.trim()) {
+    return res.status(400).json({
+      error: "Repository name is required.",
+    });
+  }
+
+  if (typeof description !== "string") {
+    return res.status(400).json({
+      error: "Repository description must be a string.",
+    });
+  }
+
+  const repository = createRepository({
+    name,
+    description,
+  });
+
+  return res.status(201).json({
+    message: "Repository created successfully.",
+    repository,
+  });
+});
+
+// Get all repositories
+app.get("/api/repositories", (req, res) => {
+  return res.status(200).json({
+    repositories: getRepositories(),
+  });
+});
+
 
 /**
  * POST /api/merge
