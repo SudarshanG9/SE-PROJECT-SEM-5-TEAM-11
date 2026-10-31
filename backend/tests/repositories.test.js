@@ -116,4 +116,121 @@ describe("Repository API", () => {
       "Project Two",
     ]);
   });
+    it("gets a repository by ID", async () => {
+    const created = await request(app)
+      .post("/api/repositories")
+      .send({ name: "Find Me" });
+
+    const id = created.body.repository.id;
+
+    const response = await request(app)
+      .get(`/api/repositories/${id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.repository.name).toBe("Find Me");
+  });
+
+  it("returns 404 for a repository that does not exist", async () => {
+    const response = await request(app)
+      .get("/api/repositories/unknown-id");
+
+    expect(response.status).toBe(404);
+  });
+
+  it("updates repository name and description", async () => {
+    const created = await request(app)
+      .post("/api/repositories")
+      .send({ name: "Old Name", description: "Old description" });
+
+    const id = created.body.repository.id;
+
+    const response = await request(app)
+      .put(`/api/repositories/${id}`)
+      .send({
+        name: "New Name",
+        description: "New description",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.repository.name).toBe("New Name");
+    expect(response.body.repository.description).toBe(
+      "New description"
+    );
+    expect(response.body.repository.updatedAt).toBeTruthy();
+  });
+
+  it("updates only the repository description", async () => {
+    const created = await request(app)
+      .post("/api/repositories")
+      .send({ name: "Keep Name", description: "Old" });
+
+    const id = created.body.repository.id;
+
+    const response = await request(app)
+      .put(`/api/repositories/${id}`)
+      .send({ description: "Updated description" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.repository.name).toBe("Keep Name");
+    expect(response.body.repository.description).toBe(
+      "Updated description"
+    );
+  });
+
+  it("rejects an empty update request", async () => {
+    const created = await request(app)
+      .post("/api/repositories")
+      .send({ name: "Test" });
+
+    const response = await request(app)
+      .put(`/api/repositories/${created.body.repository.id}`)
+      .send({});
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects an invalid repository name during update", async () => {
+    const created = await request(app)
+      .post("/api/repositories")
+      .send({ name: "Test" });
+
+    const response = await request(app)
+      .put(`/api/repositories/${created.body.repository.id}`)
+      .send({ name: "   " });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 404 when updating a missing repository", async () => {
+    const response = await request(app)
+      .put("/api/repositories/unknown-id")
+      .send({ name: "Updated" });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("deletes a repository successfully", async () => {
+    const created = await request(app)
+      .post("/api/repositories")
+      .send({ name: "Delete Me" });
+
+    const id = created.body.repository.id;
+
+    const response = await request(app)
+      .delete(`/api/repositories/${id}`);
+
+    expect(response.status).toBe(200);
+
+    const check = await request(app)
+      .get(`/api/repositories/${id}`);
+
+    expect(check.status).toBe(404);
+  });
+
+  it("returns 404 when deleting a missing repository", async () => {
+    const response = await request(app)
+      .delete("/api/repositories/unknown-id");
+
+    expect(response.status).toBe(404);
+  });
 });

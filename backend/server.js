@@ -5,6 +5,9 @@ const { mergeCode } = require("./merge");
 const {
   createRepository,
   getRepositories,
+  getRepositoryById,
+  updateRepository,
+  deleteRepository,
 } = require("./repositories");
 
 const app = express();
@@ -57,7 +60,78 @@ app.get("/api/repositories", (req, res) => {
     repositories: getRepositories(),
   });
 });
+// Get a repository by ID
+app.get("/api/repositories/:id", (req, res) => {
+  const repository = getRepositoryById(req.params.id);
 
+  if (!repository) {
+    return res.status(404).json({
+      error: "Repository not found.",
+    });
+  }
+
+  return res.status(200).json({ repository });
+});
+
+// Update repository details
+app.put("/api/repositories/:id", (req, res) => {
+  const { name, description } = req.body || {};
+
+  if (name === undefined && description === undefined) {
+    return res.status(400).json({
+      error: "Provide a name or description to update.",
+    });
+  }
+
+  if (
+    name !== undefined &&
+    (typeof name !== "string" || !name.trim())
+  ) {
+    return res.status(400).json({
+      error: "Repository name must be a non-empty string.",
+    });
+  }
+
+  if (
+    description !== undefined &&
+    typeof description !== "string"
+  ) {
+    return res.status(400).json({
+      error: "Repository description must be a string.",
+    });
+  }
+
+  const repository = updateRepository(req.params.id, {
+    ...(name !== undefined && { name }),
+    ...(description !== undefined && { description }),
+  });
+
+  if (!repository) {
+    return res.status(404).json({
+      error: "Repository not found.",
+    });
+  }
+
+  return res.status(200).json({
+    message: "Repository updated successfully.",
+    repository,
+  });
+});
+
+// Delete a repository
+app.delete("/api/repositories/:id", (req, res) => {
+  const deleted = deleteRepository(req.params.id);
+
+  if (!deleted) {
+    return res.status(404).json({
+      error: "Repository not found.",
+    });
+  }
+
+  return res.status(200).json({
+    message: "Repository deleted successfully.",
+  });
+});
 
 /**
  * POST /api/merge

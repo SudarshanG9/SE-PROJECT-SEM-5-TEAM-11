@@ -19,7 +19,37 @@ function getRepositories() {
   return Array.from(repositories.values());
 }
 
-// Used to keep automated tests independent.
+function getRepositoryById(id) {
+  return repositories.get(id) || null;
+}
+
+function updateRepository(id, updates) {
+  const repository = repositories.get(id);
+
+  if (!repository) {
+    return null;
+  }
+
+  const updatedRepository = {
+    ...repository,
+    ...(updates.name !== undefined && {
+      name: updates.name.trim(),
+    }),
+    ...(updates.description !== undefined && {
+      description: updates.description.trim(),
+    }),
+    updatedAt: new Date().toISOString(),
+  };
+
+  repositories.set(id, updatedRepository);
+
+  return updatedRepository;
+}
+
+function deleteRepository(id) {
+  return repositories.delete(id);
+}
+
 function clearRepositories() {
   repositories.clear();
 }
@@ -27,5 +57,8 @@ function clearRepositories() {
 module.exports = {
   createRepository,
   getRepositories,
+  getRepositoryById,
+  updateRepository,
+  deleteRepository,
   clearRepositories,
 };
