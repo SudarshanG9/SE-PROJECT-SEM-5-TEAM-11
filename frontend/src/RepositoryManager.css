@@ -1,0 +1,238 @@
+.repository-section {
+  margin: 36px auto;
+  padding: 30px;
+  width: min(1180px, calc(100% - 48px));
+  color: #e8eaf0;
+  background: #111827;
+  border: 1px solid #293449;
+  border-radius: 16px;
+}
+
+.repository-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.repository-heading h2 {
+  margin: 6px 0;
+  color: #f8fafc;
+  font-size: 1.6rem;
+}
+
+.repository-count {
+  padding: 8px 12px;
+  color: #a5b4fc;
+  background: #202b43;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.repository-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.4fr);
+  gap: 22px;
+}
+
+.repository-form,
+.repository-list-panel,
+.repository-details {
+  padding: 22px;
+  background: #172033;
+  border: 1px solid #293449;
+  border-radius: 12px;
+}
+
+.repository-form h3,
+.repository-list-panel h3,
+.repository-details h3 {
+  margin: 0 0 20px;
+  color: #f8fafc;
+}
+
+.repository-form label {
+  display: block;
+  margin: 16px 0 7px;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.repository-form input,
+.repository-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 11px 12px;
+  color: #f8fafc;
+  background: #0d1525;
+  border: 1px solid #36445d;
+  border-radius: 7px;
+  font: inherit;
+  resize: vertical;
+}
+
+.repository-form input:focus,
+.repository-form textarea:focus {
+  outline: 2px solid #818cf8;
+  outline-offset: 1px;
+}
+
+.repository-form-actions,
+.repository-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.repository-primary-button,
+.repository-secondary-button,
+.repository-item-actions button {
+  padding: 9px 13px;
+  color: #e2e8f0;
+  background: #29364e;
+  border: 1px solid #40516e;
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.repository-primary-button {
+  color: white;
+  background: #4f46e5;
+  border-color: #6366f1;
+}
+
+.repository-primary-button:hover {
+  background: #4338ca;
+}
+
+.repository-secondary-button:hover,
+.repository-item-actions button:hover {
+  background: #36445d;
+}
+
+.repository-primary-button:disabled,
+.repository-secondary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.repository-list {
+  display: grid;
+  gap: 12px;
+}
+
+.repository-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #101a2c;
+  border: 1px solid #293449;
+  border-radius: 9px;
+}
+
+.repository-item-info {
+  min-width: 0;
+}
+
+.repository-item-info h4 {
+  margin: 0 0 7px;
+  color: #f8fafc;
+  overflow-wrap: anywhere;
+}
+
+.repository-item-info p {
+  margin: 0 0 8px;
+  color: #aab6c8;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.repository-item-info span {
+  color: #7f8da5;
+  font-size: 0.78rem;
+}
+
+.repository-item-actions {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+.repository-item-actions .repository-delete-button {
+  color: #fca5a5;
+  border-color: #713b48;
+}
+
+.repository-item-actions .repository-delete-button:hover {
+  background: #452331;
+}
+
+.repository-empty {
+  color: #9aa8bd;
+  line-height: 1.6;
+}
+
+.repository-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-top: 20px;
+  overflow-wrap: anywhere;
+}
+
+.repository-details p {
+  color: #aab6c8;
+  line-height: 1.6;
+}
+
+.repository-message {
+  margin-bottom: 18px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.repository-error {
+  color: #fecaca;
+  background: #3b1e2b;
+  border: 1px solid #713b48;
+}
+
+.repository-success {
+  color: #bbf7d0;
+  background: #15352b;
+  border: 1px solid #28634d;
+}
+
+@media (max-width: 760px) {
+  .repository-section {
+    width: auto;
+    margin: 24px 16px;
+    padding: 18px;
+  }
+
+  .repository-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .repository-heading,
+  .repository-details {
+    flex-direction: column;
+  }
+
+  .repository-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .repository-item-actions {
+    flex-wrap: wrap;
+  }
+}

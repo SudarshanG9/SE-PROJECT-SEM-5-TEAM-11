@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react'
 import { compareLines, examples, resolveOutput } from './mergeWorkspace'
 import './App.css'
+import RepositoryManager from './RepositoryManager'
 
 function App() {
   const [base, setBase] = useState('')
@@ -195,7 +196,7 @@ function App() {
           <span className="meta-item">3 input files</span>
         </div>
       </header>
-
+      <RepositoryManager />
       <section className="workspace" aria-label="Merge workspace">
         <div className="section-heading">
           <div>
