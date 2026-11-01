@@ -419,6 +419,7 @@ function BranchManager() {
                       <div className="branch-item-actions">
                         <button
                           type="button"
+                          aria-label={`Rename ${branch.name}`}
                           onClick={() => handleRename(branch)}
                           disabled={branch.isDefault || branch.isProtected}
                         >
@@ -428,6 +429,7 @@ function BranchManager() {
                         <button
                           type="button"
                           className="branch-delete"
+                          aria-label={`Delete ${branch.name}`}
                           onClick={() => handleDelete(branch)}
                           disabled={branch.isDefault || branch.isProtected}
                         >
