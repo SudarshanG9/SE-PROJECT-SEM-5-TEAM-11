@@ -44,7 +44,7 @@ function RepositoryManager() {
 
     try {
       const data = await request(API_URL)
-      setRepositories(Array.isArray(data) ? data : [])
+      setRepositories(Array.isArray(data?.repositories) ? data.repositories : [])
     } catch (err) {
       setError(err.message)
     } finally {
