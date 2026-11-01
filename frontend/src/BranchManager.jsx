@@ -331,7 +331,12 @@ function BranchManager() {
       )}
 
       {feedback && (
-        <div className="branch-message branch-success" role="status">
+        <div
+           className="branch-message branch-success"
+           role="status"
+           aria-live="polite"
+           aria-atomic="true"
+         >
           {feedback}
         </div>
       )}
@@ -374,7 +379,7 @@ function BranchManager() {
               </div>
 
               {loading && branches.length === 0 ? (
-                <p className="branch-empty">Loading branches...</p>
+                <p className="branch-empty" role="status" aria-live="polite">Loading branches...</p>
               ) : branches.length === 0 ? (
                 <p className="branch-empty">No branches found.</p>
               ) : (
@@ -389,6 +394,8 @@ function BranchManager() {
                       <button
                         type="button"
                         className="branch-select"
+                        aria-label={`Select branch ${branch.name}`}
+                        aria-pressed={selectedBranchId === branch.id}
                         onClick={() => setSelectedBranchId(branch.id)}
                       >
                         <span className="branch-symbol" aria-hidden="true">
@@ -412,6 +419,7 @@ function BranchManager() {
                       <div className="branch-item-actions">
                         <button
                           type="button"
+                          aria-label={`Rename ${branch.name}`}
                           onClick={() => handleRename(branch)}
                           disabled={branch.isDefault || branch.isProtected}
                         >
@@ -421,6 +429,7 @@ function BranchManager() {
                         <button
                           type="button"
                           className="branch-delete"
+                          aria-label={`Delete ${branch.name}`}
                           onClick={() => handleDelete(branch)}
                           disabled={branch.isDefault || branch.isProtected}
                         >

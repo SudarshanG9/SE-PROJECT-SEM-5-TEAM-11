@@ -236,3 +236,45 @@
     flex-wrap: wrap;
   }
 }
+/* Improved repository form layout on small screens */
+@media (max-width: 480px) {
+  .repository-form {
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .repository-form input,
+  .repository-form textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .repository-form-actions {
+    flex-direction: column;
+  }
+
+  .repository-form-actions button {
+    width: 100%;
+  }
+}
+/* Improve repository card actions on small screens */
+@media (max-width: 480px) {
+  .repository-item {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+  }
+
+  .repository-item-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
+  }
+
+  .repository-item-actions button {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 8px;
+  }
+}

@@ -1063,3 +1063,110 @@ button {
 .resolution-input { display: block; width: 100%; min-height: 100px; padding: 12px; margin: 12px 0; background: #111827; color: #f9fafb; font-family: monospace; }
 .result-note summary { cursor: pointer; font-weight: 600; }
 .actions { flex-wrap: wrap; }
+
+
+/* =========================================
+   Enhanced responsive workspace layout
+========================================= */
+
+@media (max-width: 680px) {
+  /* Allow header metadata to wrap on narrow screens */
+  .workspace-meta {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Prevent section headings from becoming cramped */
+  .section-heading {
+    flex-wrap: wrap;
+  }
+
+  /* Allow editor headings and status labels to wrap */
+  .editor-card-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .editor-status {
+    margin-left: auto;
+  }
+
+  /* Keep editor toolbars from overflowing */
+  .editor-toolbar {
+    flex-wrap: wrap;
+    min-width: 0;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  /* Allow result headers to fit smaller screens */
+  .result-card-header {
+    flex-wrap: wrap;
+  }
+
+  .result-title {
+    flex: 1 1 200px;
+  }
+
+  .preview-label {
+    margin-left: 47px;
+  }
+
+  /* Keep footer content within the viewport */
+  .page-footer {
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Extra-small mobile screens */
+@media (max-width: 360px) {
+  .app {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .brand {
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .workspace-meta {
+    gap: 8px;
+  }
+
+  .editor-card-header {
+    gap: 8px;
+  }
+
+  .editor-body textarea {
+    padding: 12px 9px;
+    font-size: 11px;
+  }
+
+  .line-number {
+    width: 29px;
+  }
+
+  .result-output {
+    padding: 12px;
+    font-size: 10px;
+  }
+}
+/* Consistent keyboard focus indicators */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Make focused interactive elements easier to identify */
+.branch-select:focus-visible,
+.repository-item-actions button:focus-visible {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 3px;
+}
