@@ -379,7 +379,7 @@ function BranchManager() {
               </div>
 
               {loading && branches.length === 0 ? (
-                <p className="branch-empty">Loading branches...</p>
+                <p className="branch-empty" role="status" aria-live="polite">Loading branches...</p>
               ) : branches.length === 0 ? (
                 <p className="branch-empty">No branches found.</p>
               ) : (
