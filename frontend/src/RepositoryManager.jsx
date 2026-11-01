@@ -245,12 +245,14 @@ function RepositoryManager() {
                   <div className="repository-item-actions">
                     <button
                       type="button"
+                      aria-label={`View ${repository.name}`}
                       onClick={() => handleView(repository)}
                     >
                       View
                     </button>
                     <button
                       type="button"
+                      aria-label={`Edit ${repository.name}`}
                       onClick={() => handleEdit(repository)}
                     >
                       Edit
@@ -258,6 +260,7 @@ function RepositoryManager() {
                     <button
                       type="button"
                       className="repository-delete-button"
+                      aria-label={`Delete ${repository.name}`}
                       onClick={() => handleDelete(repository)}
                     >
                       Delete
