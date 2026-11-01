@@ -1153,3 +1153,20 @@ button {
     font-size: 10px;
   }
 }
+/* Consistent keyboard focus indicators */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Make focused interactive elements easier to identify */
+.branch-select:focus-visible,
+.repository-item-actions button:focus-visible {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 3px;
+}
