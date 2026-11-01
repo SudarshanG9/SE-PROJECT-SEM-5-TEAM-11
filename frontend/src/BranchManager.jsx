@@ -331,7 +331,12 @@ function BranchManager() {
       )}
 
       {feedback && (
-        <div className="branch-message branch-success" role="status">
+        <div
+           className="branch-message branch-success"
+           role="status"
+           aria-live="polite"
+           aria-atomic="true"
+         >
           {feedback}
         </div>
       )}
