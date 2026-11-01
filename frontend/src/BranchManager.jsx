@@ -389,6 +389,8 @@ function BranchManager() {
                       <button
                         type="button"
                         className="branch-select"
+                        aria-label={`Select branch ${branch.name}`}
+                        aria-pressed={selectedBranchId === branch.id}
                         onClick={() => setSelectedBranchId(branch.id)}
                       >
                         <span className="branch-symbol" aria-hidden="true">
