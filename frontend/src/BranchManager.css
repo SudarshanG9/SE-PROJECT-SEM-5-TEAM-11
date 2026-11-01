@@ -297,3 +297,36 @@
     flex-direction: column;
   }
 }
+/* Improve branch list layout on small screens */
+@media (max-width: 480px) {
+  .branch-panel {
+    min-width: 0;
+    padding: 15px;
+  }
+
+  .branch-item {
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .branch-select {
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .branch-item-info {
+    overflow-wrap: anywhere;
+  }
+
+  .branch-item-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 8px;
+  }
+
+  .branch-item-actions button {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 6px;
+  }
+}
