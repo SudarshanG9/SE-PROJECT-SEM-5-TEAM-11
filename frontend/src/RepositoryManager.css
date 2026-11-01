@@ -236,3 +236,24 @@
     flex-wrap: wrap;
   }
 }
+/* Improved repository form layout on small screens */
+@media (max-width: 480px) {
+  .repository-form {
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .repository-form input,
+  .repository-form textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .repository-form-actions {
+    flex-direction: column;
+  }
+
+  .repository-form-actions button {
+    width: 100%;
+  }
+}
