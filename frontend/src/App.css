@@ -846,6 +846,15 @@ button {
   font-size: 10px;
   line-height: 1.7;
 }
+.merge-status-success {
+  border-left: 4px solid var(--success);
+  background: rgba(74, 222, 128, 0.06);
+}
+
+.merge-status-conflict {
+  border-left: 4px solid #fbbf24;
+  background: rgba(245, 158, 11, 0.06);
+}
 
 /* =========================================
    Footer
