@@ -415,7 +415,9 @@ function App() {
                     <pre className="result-output">{conflict.branchA}</pre>
                     <p>Branch B</p>
                     <pre className="result-output">{conflict.branchB}</pre>
-                    <p>{Object.hasOwn(resolutions, conflict.id) ? 'Resolved' : 'Unresolved'}</p>
+                    <p className={`conflict-status ${Object.hasOwn(resolutions, conflict.id) ? 'conflict-status-resolved' : 'conflict-status-unresolved'}`}>
+                                                   {Object.hasOwn(resolutions, conflict.id) ? 'Resolved' : 'Unresolved'}
+                                        </p>
                     <div className="actions">
                       <button className="clear-button" onClick={() => resolveConflict(conflict, conflict.branchALines)}>Use Branch A</button>
                       <button className="clear-button" onClick={() => resolveConflict(conflict, conflict.branchBLines)}>Use Branch B</button>
