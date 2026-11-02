@@ -9,7 +9,14 @@ const {
   updateRepository,
   deleteRepository,
 } = require("./repositories");
-
+const {
+  createFile,
+  getFiles,
+  getFileById,
+  updateFile,
+  deleteFile,
+  clearFiles,
+} = require("./files");
 const app = express();
 const {
   initializeRepository,
@@ -136,9 +143,196 @@ app.delete("/api/repositories/:id", (req, res) => {
   }
 
   deleteRepositoryBranches(req.params.id);
-
+  clearFiles(req.params.id);
   return res.status(200).json({
     message: "Repository deleted successfully.",
+  });
+});
+
+/* =========================================
+   FILE MANAGEMENT API
+   ========================================= */
+
+// Validate file names before creating or updating files.
+function isValidFileName(name) {
+  return (
+    typeof name === "string" &&
+    name.trim().length > 0 &&
+    name.trim().length <= 255 &&
+    name.trim() !== "." &&
+    name.trim() !== ".." &&
+    !/[\\/]/.test(name)
+  );
+}
+
+// Check whether another file already uses this name.
+function hasDuplicateFileName(repositoryId, name, excludeFileId = null) {
+  return getFiles(repositoryId).some(
+    (file) =>
+      file.id !== excludeFileId &&
+      file.name.toLowerCase() === name.trim().toLowerCase()
+  );
+}
+
+// GET /api/repositories/:id/files
+// Retrieve all files belonging to a repository.
+app.get("/api/repositories/:id/files", (req, res) => {
+  const repositoryId = req.params.id;
+
+  if (!getRepositoryById(repositoryId)) {
+    return res.status(404).json({
+      error: "Repository not found.",
+    });
+  }
+
+  return res.status(200).json({
+    files: getFiles(repositoryId),
+  });
+});
+
+// POST /api/repositories/:id/files
+// Create a new file inside a repository.
+app.post("/api/repositories/:id/files", (req, res) => {
+  const repositoryId = req.params.id;
+  const { name, content = "" } = req.body || {};
+
+  if (!getRepositoryById(repositoryId)) {
+    return res.status(404).json({
+      error: "Repository not found.",
+    });
+  }
+
+  if (!isValidFileName(name)) {
+    return res.status(400).json({
+      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators.",
+    });
+  }
+
+  if (typeof content !== "string") {
+    return res.status(400).json({
+      error: "File content must be a string.",
+    });
+  }
+
+  if (hasDuplicateFileName(repositoryId, name)) {
+    return res.status(409).json({
+      error: "A file with this name already exists in this repository.",
+    });
+  }
+
+  const file = createFile({
+    repositoryId,
+    name,
+    content,
+  });
+
+  return res.status(201).json({
+    message: "File created successfully.",
+    file,
+  });
+});
+
+// GET /api/repositories/:id/files/:fileId
+// Retrieve one file.
+app.get("/api/repositories/:id/files/:fileId", (req, res) => {
+  const { id: repositoryId, fileId } = req.params;
+
+  if (!getRepositoryById(repositoryId)) {
+    return res.status(404).json({
+      error: "Repository not found.",
+    });
+  }
+
+  const file = getFileById(repositoryId, fileId);
+
+  if (!file) {
+    return res.status(404).json({
+      error: "File not found.",
+    });
+  }
+
+  return res.status(200).json({ file });
+});
+
+// PUT /api/repositories/:id/files/:fileId
+// Update a file's name or content.
+app.put("/api/repositories/:id/files/:fileId", (req, res) => {
+  const { id: repositoryId, fileId } = req.params;
+  const { name, content } = req.body || {};
+
+  if (!getRepositoryById(repositoryId)) {
+    return res.status(404).json({
+      error: "Repository not found.",
+    });
+  }
+
+  const existingFile = getFileById(repositoryId, fileId);
+
+  if (!existingFile) {
+    return res.status(404).json({
+      error: "File not found.",
+    });
+  }
+
+  if (name === undefined && content === undefined) {
+    return res.status(400).json({
+      error: "Provide a file name or content to update.",
+    });
+  }
+
+  if (name !== undefined && !isValidFileName(name)) {
+    return res.status(400).json({
+      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators.",
+    });
+  }
+
+  if (content !== undefined && typeof content !== "string") {
+    return res.status(400).json({
+      error: "File content must be a string.",
+    });
+  }
+
+  if (
+    name !== undefined &&
+    hasDuplicateFileName(repositoryId, name, fileId)
+  ) {
+    return res.status(409).json({
+      error: "A file with this name already exists in this repository.",
+    });
+  }
+
+  const file = updateFile(repositoryId, fileId, {
+    ...(name !== undefined && { name }),
+    ...(content !== undefined && { content }),
+  });
+
+  return res.status(200).json({
+    message: "File updated successfully.",
+    file,
+  });
+});
+
+// DELETE /api/repositories/:id/files/:fileId
+// Delete a file from a repository.
+app.delete("/api/repositories/:id/files/:fileId", (req, res) => {
+  const { id: repositoryId, fileId } = req.params;
+
+  if (!getRepositoryById(repositoryId)) {
+    return res.status(404).json({
+      error: "Repository not found.",
+    });
+  }
+
+  const deleted = deleteFile(repositoryId, fileId);
+
+  if (!deleted) {
+    return res.status(404).json({
+      error: "File not found.",
+    });
+  }
+
+  return res.status(200).json({
+    message: "File deleted successfully.",
   });
 });
 

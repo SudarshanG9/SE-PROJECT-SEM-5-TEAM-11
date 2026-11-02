@@ -1,6 +1,13 @@
-
-import { describe, it, expect, beforeEach } from "vitest";
+import request from "supertest";
+import app from "../server.js";
+import repositoryStore from "../repositories.js";
 import fileStore from "../files.js";
+import { describe, it, expect, beforeEach } from "vitest";
+
+const {
+  createRepository,
+  clearRepositories,
+} = repositoryStore;
 
 const {
   createFile,
@@ -294,6 +301,275 @@ describe("File management data layer", () => {
 
       expect(getFiles("repo-1")).toEqual([]);
       expect(getFiles("repo-2")).toHaveLength(1);
+    });
+  });
+});
+
+describe("File management REST API", () => {
+  let repository;
+
+  beforeEach(() => {
+    clearFiles();
+    clearRepositories();
+
+    repository = createRepository({
+      name: "Test Repository",
+      description: "Repository for file API tests",
+    });
+  });
+
+  
+  describe("GET /api/repositories/:id/files", () => {
+    it("returns all files in a repository", async () => {
+      createFile({
+        repositoryId: repository.id,
+        name: "index.js",
+        content: "console.log('Hello');",
+      });
+
+      const response = await request(app)
+        .get(`/api/repositories/${repository.id}/files`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.files).toHaveLength(1);
+      expect(response.body.files[0].name).toBe("index.js");
+    });
+
+    it("returns 404 for a missing repository", async () => {
+      const response = await request(app)
+        .get("/api/repositories/unknown/files");
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe("Repository not found.");
+    });
+  });
+
+  describe("POST /api/repositories/:id/files", () => {
+    it("creates a file successfully", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "index.js",
+          content: "console.log('Hello');",
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.file.name).toBe("index.js");
+      expect(response.body.file.content).toBe("console.log('Hello');");
+      expect(response.body.file.repositoryId).toBe(repository.id);
+    });
+
+    it("creates a file with empty content when content is omitted", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "README.md",
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.file.content).toBe("");
+    });
+
+    it("rejects an empty filename", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: " ",
+          content: "",
+        });
+
+      expect(response.status).toBe(400);
+    });
+
+    it("rejects a filename containing a path separator", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "../index.js",
+          content: "",
+        });
+
+      expect(response.status).toBe(400);
+    });
+
+    it("rejects non-string content", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "index.js",
+          content: 123,
+        });
+
+      expect(response.status).toBe(400);
+    });
+
+    it("rejects duplicate filenames", async () => {
+      await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "index.js",
+          content: "",
+        });
+
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "INDEX.JS",
+          content: "",
+        });
+
+      expect(response.status).toBe(409);
+    });
+
+    it("returns 404 when creating a file in a missing repository", async () => {
+      const response = await request(app)
+        .post("/api/repositories/unknown/files")
+        .send({
+          name: "index.js",
+          content: "",
+        });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("GET /api/repositories/:id/files/:fileId", () => {
+    it("returns a file by ID", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "index.js",
+        content: "Hello",
+      });
+
+      const response = await request(app)
+        .get(`/api/repositories/${repository.id}/files/${created.id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.file.id).toBe(created.id);
+      expect(response.body.file.content).toBe("Hello");
+    });
+
+    it("returns 404 when the file does not exist", async () => {
+      const response = await request(app)
+        .get(`/api/repositories/${repository.id}/files/unknown`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe("File not found.");
+    });
+
+    it("does not expose a file through another repository", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "index.js",
+      });
+
+      const response = await request(app)
+        .get(`/api/repositories/another-repo/files/${created.id}`);
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("PUT /api/repositories/:id/files/:fileId", () => {
+    it("updates file content", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "index.js",
+        content: "Old content",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({
+          content: "New content",
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.file.content).toBe("New content");
+    });
+
+    it("updates the filename", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "old.js",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({
+          name: "new.js",
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.file.name).toBe("new.js");
+    });
+
+    it("rejects an empty update body", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "index.js",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({});
+
+      expect(response.status).toBe(400);
+    });
+
+    it("rejects duplicate filenames during update", async () => {
+      createFile({
+        repositoryId: repository.id,
+        name: "existing.js",
+      });
+
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "another.js",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({
+          name: "existing.js",
+        });
+
+      expect(response.status).toBe(409);
+    });
+
+    it("returns 404 when updating a missing file", async () => {
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/unknown`)
+        .send({
+          content: "Updated",
+        });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("DELETE /api/repositories/:id/files/:fileId", () => {
+    it("deletes a file successfully", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "index.js",
+      });
+
+      const response = await request(app)
+        .delete(`/api/repositories/${repository.id}/files/${created.id}`);
+
+      expect(response.status).toBe(200);
+
+      expect(
+        getFileById(repository.id, created.id)
+      ).toBeNull();
+    });
+
+    it("returns 404 when deleting a missing file", async () => {
+      const response = await request(app)
+        .delete(`/api/repositories/${repository.id}/files/unknown`);
+
+      expect(response.status).toBe(404);
     });
   });
 });
