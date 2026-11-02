@@ -112,6 +112,22 @@ new files, deletions, or whitespace-only content. Malformed JSON returns `400`;
 bodies exceeding the Express 100 KB limit or comparisons exceeding 2,000,000
 LCS cells return `413`, always with a JSON error message.
 
+### Repository file management
+
+Files are scoped to a repository and use the existing file API:
+
+| Method | Endpoint | Success response |
+|---|---|---|
+| `GET` | `/api/repositories/:id/files` | `{ "files": [...] }` |
+| `POST` | `/api/repositories/:id/files` | `{ "message": "...", "file": {...} }` |
+| `GET` | `/api/repositories/:id/files/:fileId` | `{ "file": {...} }` |
+| `PUT` | `/api/repositories/:id/files/:fileId` | `{ "message": "...", "file": {...} }` |
+| `DELETE` | `/api/repositories/:id/files/:fileId` | `{ "message": "..." }` |
+
+Create requests accept a filename and optional string content. Updates accept a
+filename, content, or both. The browser file workspace supports text/code file
+uploads up to 1 MB and saves editor changes through the update endpoint.
+
 ## Testing
 
 Backend tests use [Vitest](https://vitest.dev) with
@@ -128,6 +144,9 @@ npm test
 | `health.test.js` | `GET /api/health` |
 | `api.test.js` | Unknown routes, CORS, merge responses, and request validation |
 | `merge.test.js` | Merge engine logic |
+
+Frontend tests also cover the repository file browser and editor in
+`frontend/src/FileManager.test.jsx`.
 
 ## Contributing
 

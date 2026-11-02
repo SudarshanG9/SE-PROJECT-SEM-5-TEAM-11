@@ -1,0 +1,363 @@
+.file-manager {
+  width: 100%;
+  margin-top: 20px;
+  padding: 22px;
+  background: #101a2c;
+  border: 1px solid #293449;
+  border-radius: 10px;
+}
+
+.file-manager-heading,
+.file-editor-heading,
+.file-list-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.file-manager-heading h3,
+.file-editor-heading h4,
+.file-list-heading h4 {
+  margin: 0;
+  color: #f8fafc;
+}
+
+.file-manager-description {
+  margin: 8px 0 0;
+  color: #aab6c8;
+  font-size: 0.88rem;
+}
+
+.file-manager-actions,
+.file-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 12px;
+  color: #e2e8f0;
+  background: #29364e;
+  border: 1px solid #40516e;
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.file-action-button:hover:not(:disabled):not(.is-disabled) {
+  background: #36445d;
+}
+
+.file-action-button:disabled,
+.file-action-button.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.file-upload-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.file-upload-button input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.file-upload-button.is-disabled input {
+  cursor: not-allowed;
+}
+
+.file-message {
+  margin-top: 16px;
+  padding: 11px 13px;
+  border-radius: 7px;
+  font-size: 0.88rem;
+}
+
+.file-error {
+  color: #fecaca;
+  background: #3b1e2b;
+  border: 1px solid #713b48;
+}
+
+.file-success {
+  color: #bbf7d0;
+  background: #15352b;
+  border: 1px solid #28634d;
+}
+
+.file-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
+  max-width: 640px;
+  margin-top: 18px;
+  padding: 16px;
+  background: #172033;
+  border: 1px solid #293449;
+  border-radius: 8px;
+}
+
+.file-create-form label {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+.file-create-form input,
+.file-create-form textarea {
+  width: 100%;
+  padding: 10px 11px;
+  color: #f8fafc;
+  background: #0d1525;
+  border: 1px solid #36445d;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.file-create-form textarea {
+  resize: vertical;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.file-manager-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.8fr) minmax(0, 1.6fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.file-list-panel,
+.file-editor-panel {
+  min-width: 0;
+  min-height: 280px;
+  padding: 15px;
+  background: #172033;
+  border: 1px solid #293449;
+  border-radius: 8px;
+}
+
+.file-list-heading {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.file-list-heading h4 {
+  font-size: 0.95rem;
+}
+
+.file-list-heading > span {
+  min-width: 24px;
+  padding: 3px 7px;
+  color: #c7d2fe;
+  background: #29364e;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.file-empty {
+  margin: 0;
+  color: #9aa8bd;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.file-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  background: #101a2c;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.file-list-item.is-selected {
+  border-color: #6366f1;
+}
+
+.file-open-button {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+  padding: 5px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.file-open-button:disabled {
+  cursor: wait;
+}
+
+.file-name {
+  overflow-wrap: anywhere;
+}
+
+.file-information {
+  color: #8492a8;
+  font-size: 0.72rem;
+}
+
+.file-delete-button {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  color: #fca5a5;
+  background: transparent;
+  border: 1px solid #713b48;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.73rem;
+}
+
+.file-delete-button:hover:not(:disabled) {
+  background: #452331;
+}
+
+.file-delete-button:disabled {
+  opacity: 0.6;
+}
+
+.file-editor-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-editor-heading {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.file-editor-heading .section-kicker {
+  margin-bottom: 6px;
+}
+
+.file-editor-heading h4 {
+  overflow-wrap: anywhere;
+}
+
+.file-save-state {
+  color: #9aa8bd;
+  font-size: 0.75rem;
+}
+
+.file-save-state.is-dirty {
+  color: #fbbf24;
+}
+
+.file-save-button {
+  color: #fff;
+  background: #4f46e5;
+  border-color: #6366f1;
+}
+
+.file-save-button:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.code-editor {
+  flex: 1;
+  width: 100%;
+  min-height: 215px;
+  padding: 14px;
+  color: #e2e8f0;
+  background: #0b1220;
+  border: 1px solid #36445d;
+  border-radius: 6px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  tab-size: 2;
+  resize: vertical;
+}
+
+.code-editor:focus,
+.file-create-form input:focus,
+.file-create-form textarea:focus {
+  outline: 2px solid #818cf8;
+  outline-offset: 1px;
+}
+
+.file-editor-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  color: #8492a8;
+  font-size: 0.72rem;
+}
+
+.file-editor-empty {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  color: #8492a8;
+  text-align: center;
+}
+
+.file-editor-empty > span {
+  color: #818cf8;
+  font-family: Consolas, monospace;
+  font-size: 2rem;
+}
+
+.file-editor-empty p {
+  margin: 10px 0 0;
+}
+
+@media (max-width: 800px) {
+  .file-manager-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .file-manager {
+    padding: 14px;
+  }
+
+  .file-manager-heading,
+  .file-editor-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .file-manager-actions,
+  .file-editor-actions {
+    align-items: stretch;
+  }
+
+  .file-manager-actions .file-action-button,
+  .file-editor-actions .file-action-button {
+    flex: 1;
+  }
+
+  .file-save-state {
+    width: 100%;
+  }
+}

@@ -179,12 +179,20 @@
 }
 
 .repository-details {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
+  display: block;
   margin-top: 20px;
   overflow-wrap: anywhere;
+}
+
+.repository-detail-summary {
+  position: relative;
+  padding-right: 130px;
+}
+
+.repository-detail-summary > .repository-secondary-button {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
 .repository-details p {
@@ -225,6 +233,15 @@
   .repository-heading,
   .repository-details {
     flex-direction: column;
+  }
+
+  .repository-detail-summary {
+    padding-right: 0;
+  }
+
+  .repository-detail-summary > .repository-secondary-button {
+    position: static;
+    margin-top: 8px;
   }
 
   .repository-item {
