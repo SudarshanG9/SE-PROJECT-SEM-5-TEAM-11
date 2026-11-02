@@ -806,6 +806,16 @@ button {
   font-weight: 750;
   letter-spacing: 0.8px;
 }
+.preview-label-success {
+  color: var(--success);
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.25);
+}
+.preview-label-conflict {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+}
 
 .result-output {
   display: block;

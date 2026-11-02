@@ -386,7 +386,9 @@ function App() {
                 </div>
               </div>
 
-              <span className="preview-label">{unresolved ? 'CONFLICT' : 'MERGED'}</span>
+               <span className={`preview-label ${unresolved ? 'preview-label-conflict' : 'preview-label-success'}`}>
+                {unresolved ? 'CONFLICT' : 'MERGED'}
+                                  </span>
             </div>
 
             <div className="result-note">
