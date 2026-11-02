@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import FileManager from './FileManager'
 import './RepositoryManager.css'
 
 const API_URL = `${import.meta.env.VITE_API_URL || ''}/api/repositories`
@@ -13,6 +14,7 @@ function RepositoryManager() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const fileManagerRef = useRef(null)
 
   async function request(url, options = {}) {
     const response = await fetch(url, {
@@ -64,10 +66,19 @@ function RepositoryManager() {
     setEditingId(null)
   }
 
+  async function prepareToLeaveRepository() {
+    if (!fileManagerRef.current) return true
+    return fileManagerRef.current.prepareToLeave()
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
     setFeedback('')
+
+    if (selectedRepository && !(await prepareToLeaveRepository())) {
+      return
+    }
 
     if (!name.trim()) {
       setError('Repository name is required.')
@@ -101,7 +112,11 @@ function RepositoryManager() {
     }
   }
 
-  function handleEdit(repository) {
+  async function handleEdit(repository) {
+    if (selectedRepository && !(await prepareToLeaveRepository())) {
+      return
+    }
+
     setEditingId(repository.id)
     setName(repository.name)
     setDescription(repository.description || '')
@@ -111,15 +126,30 @@ function RepositoryManager() {
   }
 
   async function handleView(repository) {
+    if (
+      selectedRepository?.id !== repository.id &&
+      !(await prepareToLeaveRepository())
+    ) {
+      return
+    }
+
     setError('')
     setFeedback('')
 
     try {
       const data = await request(`${API_URL}/${repository.id}`)
-      setSelectedRepository(data)
+      if (!data?.repository) {
+        throw new Error('Backend returned an invalid repository response.')
+      }
+      setSelectedRepository(data.repository)
     } catch (err) {
       setError(err.message)
     }
+  }
+
+  async function closeRepositoryDetails() {
+    if (!(await prepareToLeaveRepository())) return
+    setSelectedRepository(null)
   }
 
   async function handleDelete(repository) {
@@ -128,6 +158,12 @@ function RepositoryManager() {
     )
 
     if (!confirmed) return
+    if (
+      selectedRepository?.id === repository.id &&
+      !(await prepareToLeaveRepository())
+    ) {
+      return
+    }
 
     setError('')
     setFeedback('')
@@ -275,7 +311,7 @@ function RepositoryManager() {
 
       {selectedRepository && (
         <div className="repository-details">
-          <div>
+          <div className="repository-detail-summary">
             <p className="section-kicker">REPOSITORY DETAILS</p>
             <h3>{selectedRepository.name}</h3>
             <p>{selectedRepository.description || 'No description provided.'}</p>
@@ -290,15 +326,19 @@ function RepositoryManager() {
                 {new Date(selectedRepository.updatedAt).toLocaleString()}
               </p>
             )}
+            <button
+              type="button"
+              className="repository-secondary-button"
+              onClick={closeRepositoryDetails}
+            >
+              Close details
+            </button>
           </div>
-
-          <button
-            type="button"
-            className="repository-secondary-button"
-            onClick={() => setSelectedRepository(null)}
-          >
-            Close details
-          </button>
+          <FileManager
+            key={selectedRepository.id}
+            ref={fileManagerRef}
+            repositoryId={selectedRepository.id}
+          />
         </div>
       )}
     </section>
