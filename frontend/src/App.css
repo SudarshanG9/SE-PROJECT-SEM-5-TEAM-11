@@ -806,19 +806,35 @@ button {
   font-weight: 750;
   letter-spacing: 0.8px;
 }
+.preview-label-success {
+  color: var(--success);
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.25);
+}
+.preview-label-conflict {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+}
 
 .result-output {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
+  max-height: 520px;
   margin: 0;
   padding: 23px;
   color: #d4ddf5;
   background: var(--surface-input);
+  border: 0;
+  border-radius: 0;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
-  line-height: 1.9;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  overflow-x: auto;
+  line-height: 1.8;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
 }
 
 .result-note {
@@ -829,6 +845,15 @@ button {
   border-top: 1px solid var(--border-soft);
   font-size: 10px;
   line-height: 1.7;
+}
+.merge-status-success {
+  border-left: 4px solid var(--success);
+  background: rgba(74, 222, 128, 0.06);
+}
+
+.merge-status-conflict {
+  border-left: 4px solid #fbbf24;
+  background: rgba(245, 158, 11, 0.06);
 }
 
 /* =========================================
@@ -1169,4 +1194,22 @@ a:focus-visible {
 .repository-item-actions button:focus-visible {
   outline: 2px solid #c4b5fd;
   outline-offset: 3px;
+}
+.conflict-status {
+  display: inline-block;
+  margin: 8px 0;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.conflict-status-resolved {
+  color: var(--success);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.conflict-status-unresolved {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
 }
