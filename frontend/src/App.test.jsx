@@ -116,6 +116,57 @@ describe("Frontend merge features", () => {
         /unable to reach the merge service|backend is unavailable/i
       );
     });
+it("displays a clear message when the merge service returns HTTP 500", async () => {
+      mockMergeResponse({}, { ok: false, status: 500 });
+      render(<App />);
+      fillInputs();
+
+      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "internal error"
+      );
+    });
+
+    it("displays a clear message when the backend returns invalid JSON", async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockRejectedValue(new Error("Invalid JSON")),
+      });
+      render(<App />);
+      fillInputs();
+
+      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "invalid response"
+      );
+    });
+
+    it("handles an invalid merge result gracefully", async () => {
+      mockMergeResponse({});
+      render(<App />);
+      fillInputs();
+
+      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "invalid result"
+      );
+    });
+
+    it("displays a connection message when the backend cannot be reached", async () => {
+      fetch.mockRejectedValue(new TypeError("Failed to fetch"));
+      render(<App />);
+      fillInputs();
+
+      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Unable to connect to the merge service"
+      );
+    });
   });
 
   describe("merge result display", () => {
