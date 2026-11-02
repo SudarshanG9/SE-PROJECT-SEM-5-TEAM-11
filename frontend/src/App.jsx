@@ -391,7 +391,7 @@ function App() {
                                   </span>
             </div>
 
-            <div className="result-note">
+            <div className={`result-note merge-status ${unresolved ? 'merge-status-conflict' : 'merge-status-success'}`}>
               <h3>Merge status</h3>
               <p>{unresolved ? 'Conflicts require attention' : 'Successful merge'}</p>
               <p>{result.conflicts.length ? (unresolved ? `${unresolved} unresolved conflict(s)` : 'All conflicts resolved.') : result.message}</p>
