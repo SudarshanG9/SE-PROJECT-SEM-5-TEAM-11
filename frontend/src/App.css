@@ -159,6 +159,173 @@ body {
   line-height: 1.7;
 }
 
+/* Disabled button during loading */
+.actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error banner */
+.error-banner {
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border-radius: 9px;
+  background: #fff1f1;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+/* Result header row */
+.result-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.result-header h2 {
+  margin: 0;
+}
+
+/* Status badge */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.status-badge.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.conflict {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Result message */
+.result-message {
+  margin: 8px 0 16px;
+  color: #667085;
+  font-size: 14px;
+}
+
+/* Section labels inside result */
+.section-label {
+  margin: 20px 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #172033;
+}
+
+/* Merged code block */
+.code-block {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f5f7fb;
+  color: #172033;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Conflicts section */
+.conflicts-section {
+  margin-top: 8px;
+}
+
+.conflict-block {
+  margin-top: 16px;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.conflict-meta {
+  margin: 0;
+  padding: 10px 16px;
+  background: #fef9ec;
+  font-size: 13px;
+  font-weight: 700;
+  color: #92400e;
+  border-bottom: 1px solid #fde68a;
+}
+
+.conflict-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.conflict-side {
+  padding: 14px;
+}
+
+.conflict-side.side-a {
+  border-right: 1px solid #fde68a;
+  background: #fffbeb;
+}
+
+.conflict-side.side-b {
+  background: #f0f9ff;
+  border-left: 1px solid #bae6fd;
+}
+
+.side-label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #667085;
+}
+
+.conflict-side pre {
+  margin: 0;
+  padding: 10px;
+  border-radius: 6px;
+  background: #f5f7fb;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.conflict-base {
+  padding: 10px 16px;
+  border-top: 1px solid #fde68a;
+  background: #fafafa;
+  font-size: 13px;
+}
+
+.conflict-base summary {
+  cursor: pointer;
+  color: #667085;
+  font-weight: 600;
+}
+
+.conflict-base pre {
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: 6px;
+  background: #f5f7fb;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* Dark theme */
 @media (prefers-color-scheme: dark) {
   body {

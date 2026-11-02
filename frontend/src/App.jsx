@@ -1,20 +1,49 @@
 import { useState } from 'react'
 import './App.css'
 
+const API_URL = '/api/merge'
+
 function App() {
   const [base, setBase] = useState('')
   const [branchA, setBranchA] = useState('')
   const [branchB, setBranchB] = useState('')
-  const [result, setResult] = useState('')
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-  function handleMerge() {
-    setResult(
-      'Placeholder merge result\n\n' +
-      'Base:\n' + (base || '(empty)') + '\n\n' +
-      'Branch A:\n' + (branchA || '(empty)') + '\n\n' +
-      'Branch B:\n' + (branchB || '(empty)') + '\n\n' +
-      'Real merge logic will be integrated later.'
-    )
+  async function handleMerge() {
+    setError(null)
+    setResult(null)
+    setLoading(true)
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base, branchA, branchB }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || `Server error: ${response.status}`)
+        return
+      }
+
+      setResult(data)
+    } catch (err) {
+      setError('Could not reach the backend. Make sure the server is running on port 3000.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleClear() {
+    setBase('')
+    setBranchA('')
+    setBranchB('')
+    setResult(null)
+    setError(null)
   }
 
   return (
@@ -66,28 +95,72 @@ function App() {
       </section>
 
       <div className="actions">
-        <button type="button" onClick={handleMerge}>
-          Simulate Merge
+        <button type="button" onClick={handleMerge} disabled={loading}>
+          {loading ? 'Merging…' : 'Simulate Merge'}
         </button>
 
         <button
           type="button"
           className="clear-button"
-          onClick={() => {
-            setBase('')
-            setBranchA('')
-            setBranchB('')
-            setResult('')
-          }}
+          onClick={handleClear}
+          disabled={loading}
         >
           Clear All
         </button>
       </div>
 
+      {error && (
+        <div className="error-banner" role="alert">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
       {result && (
         <section className="result-card" aria-live="polite">
-          <h2>Merge Result</h2>
-          <pre>{result}</pre>
+          <div className="result-header">
+            <h2>Merge Result</h2>
+            <span className={`status-badge ${result.hasConflict ? 'conflict' : 'success'}`}>
+              {result.hasConflict
+                ? `⚠ ${result.conflicts.length} conflict${result.conflicts.length !== 1 ? 's' : ''} detected`
+                : '✓ Merged successfully'}
+            </span>
+          </div>
+
+          <p className="result-message">{result.message}</p>
+
+          <h3 className="section-label">Merged Code</h3>
+          <pre className="code-block">{result.mergedCode}</pre>
+
+          {result.hasConflict && result.conflicts.length > 0 && (
+            <div className="conflicts-section">
+              <h3 className="section-label">
+                Conflict Details ({result.conflicts.length})
+              </h3>
+              {result.conflicts.map((conflict) => (
+                <div key={conflict.id} className="conflict-block">
+                  <p className="conflict-meta">
+                    Conflict #{conflict.id} — lines {conflict.startLine}–{conflict.endLine}
+                  </p>
+                  <div className="conflict-sides">
+                    <div className="conflict-side side-a">
+                      <p className="side-label">Branch A</p>
+                      <pre>{conflict.branchA}</pre>
+                    </div>
+                    <div className="conflict-side side-b">
+                      <p className="side-label">Branch B</p>
+                      <pre>{conflict.branchB}</pre>
+                    </div>
+                  </div>
+                  {conflict.base && (
+                    <details className="conflict-base">
+                      <summary>Base (common ancestor)</summary>
+                      <pre>{conflict.base}</pre>
+                    </details>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
     </main>
