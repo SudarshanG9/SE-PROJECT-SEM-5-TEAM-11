@@ -17,6 +17,8 @@ const {
   deleteFile,
   clearFiles,
 } = require("./files");
+const { authenticate, authorize } = require("./rbac/middleware");
+const { listUsers } = require("./rbac/users");
 const app = express();
 const {
   initializeRepository,
@@ -483,7 +485,7 @@ app.post("/api/repositories/:id/commits", (req, res) => {
  * Response:
  *   { mergedCode: string, hasConflict: boolean, message: string, conflicts: array }
  */
-app.post("/api/merge", (req, res) => {
+app.post("/api/merge", authenticate, authorize("merge:create"), (req, res) => {
   const { base, branchA, branchB } = req.body || {};
 
   // Validate that all three inputs are present
@@ -520,6 +522,20 @@ app.use((error, req, res, next) => {
     return res.status(413).json({ error: "Input is too large. Use smaller code snippets." });
   }
   return res.status(500).json({ error: "Unable to merge these inputs. Please try again." });
+});
+
+/**
+ * GET /api/users
+ *
+ * Returns the list of all registered users and their roles.
+ * Requires: authenticated user with the 'owner' role.
+ *
+ * Response:
+ *   { users: Array<{ id, name, role }> }
+ */
+app.get("/api/users", authenticate, authorize("members:manage"), (req, res) => {
+  res.json({ users: listUsers() });
+});
 });
 
 const PORT = process.env.PORT || 3000;
