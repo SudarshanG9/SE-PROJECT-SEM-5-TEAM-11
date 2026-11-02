@@ -129,7 +129,18 @@ function App() {
         throw new Error('The merge service returned an invalid response. Check that the backend is running.')
       }
       if (!response.ok) {
-        throw new Error(mergeResult?.error || 'Unable to simulate the merge. Please try again.')
+       const serverMessage = mergeResult?.error
+       const statusMessage = {
+        400: 'Invalid merge request. Please check your input files.',
+        404: 'The merge service endpoint was not found.',
+        500: 'The merge service encountered an internal error. Please try again later.',
+        503: 'The merge service is temporarily unavailable. Please try again later.',
+       }
+
+       throw new Error(
+        serverMessage || statusMessage[response.status] ||
+        `Merge failed (HTTP ${response.status}). Please try again.`
+        )
       }
       if (typeof mergeResult?.mergedCode !== 'string' || typeof mergeResult.hasConflict !== 'boolean' ||
         typeof mergeResult.message !== 'string' || !Array.isArray(mergeResult.conflicts) || mergeResult.conflicts.some(c =>
@@ -141,7 +152,13 @@ function App() {
       }
       if (currentRevision === revision.current) setResult(mergeResult)
     } catch (requestError) {
-      if (currentRevision === revision.current) setError(requestError.message || 'Unable to reach the merge service. Please try again.')
+      if (currentRevision === revision.current) {
+  setError(
+    requestError instanceof TypeError
+      ? 'Unable to connect to the merge service. Check your internet connection and make sure the backend server is running.'
+      : requestError.message || 'An unexpected error occurred while processing the merge. Please try again.'
+  )
+}
     } finally {
       pending.current = false
       setLoading(false)
