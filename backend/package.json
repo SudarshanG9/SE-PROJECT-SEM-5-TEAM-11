@@ -4,13 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "start": "node server.js",
-  "test": "vitest run"
-},
+    "start": "node server.js",
+    "test": "vitest run --no-file-parallelism --maxWorkers=1"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "cors": "^2.8.6",
     "express": "^5.3.0"
   },

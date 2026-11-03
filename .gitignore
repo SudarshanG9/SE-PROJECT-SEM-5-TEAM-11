@@ -6,3 +6,9 @@ dist/
 !.env.example
 coverage/
 .DS_Store
+
+# SQLite database files
+backend/data/
+
+# SQLite database files
+backend/data/

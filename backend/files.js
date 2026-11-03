@@ -1,17 +1,11 @@
 
 const { randomUUID } = require("node:crypto");
-
-// In-memory storage for repository files.
-// Each file is stored using its unique file ID as the key.
-const files = new Map();
+const db = require("./database");
 
 /**
  * Create a file inside a repository.
  *
  * @param {Object} data
- * @param {string} data.repositoryId - Repository that owns the file.
- * @param {string} data.name - File name.
- * @param {string} [data.content=""] - File contents.
  * @returns {Object} The newly created file.
  */
 function createFile({ repositoryId, name, content = "" }) {
@@ -38,7 +32,17 @@ function createFile({ repositoryId, name, content = "" }) {
     updatedAt: now,
   };
 
-  files.set(file.id, file);
+  db.prepare(`
+    INSERT INTO files (id, repositoryId, name, content, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    file.id,
+    file.repositoryId,
+    file.name,
+    file.content,
+    file.createdAt,
+    file.updatedAt
+  );
 
   return file;
 }
@@ -50,9 +54,12 @@ function createFile({ repositoryId, name, content = "" }) {
  * @returns {Array<Object>}
  */
 function getFiles(repositoryId) {
-  return Array.from(files.values())
-    .filter((file) => file.repositoryId === repositoryId)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return db.prepare(`
+    SELECT id, repositoryId, name, content, createdAt, updatedAt
+    FROM files
+    WHERE repositoryId = ?
+    ORDER BY name COLLATE NOCASE ASC
+  `).all(repositoryId);
 }
 
 /**
@@ -63,13 +70,11 @@ function getFiles(repositoryId) {
  * @returns {Object|null}
  */
 function getFileById(repositoryId, fileId) {
-  const file = files.get(fileId);
-
-  if (!file || file.repositoryId !== repositoryId) {
-    return null;
-  }
-
-  return file;
+  return db.prepare(`
+    SELECT id, repositoryId, name, content, createdAt, updatedAt
+    FROM files
+    WHERE id = ? AND repositoryId = ?
+  `).get(fileId, repositoryId) || null;
 }
 
 /**
@@ -112,7 +117,17 @@ function updateFile(repositoryId, fileId, updates = {}) {
     updatedAt: new Date().toISOString(),
   };
 
-  files.set(fileId, updatedFile);
+  db.prepare(`
+    UPDATE files
+    SET name = ?, content = ?, updatedAt = ?
+    WHERE id = ? AND repositoryId = ?
+  `).run(
+    updatedFile.name,
+    updatedFile.content,
+    updatedFile.updatedAt,
+    fileId,
+    repositoryId
+  );
 
   return updatedFile;
 }
@@ -131,28 +146,28 @@ function deleteFile(repositoryId, fileId) {
     return false;
   }
 
-  return files.delete(fileId);
+  db.prepare(`
+    DELETE FROM files
+    WHERE id = ? AND repositoryId = ?
+  `).run(fileId, repositoryId);
+
+  return true;
 }
 
 /**
  * Clear stored files.
  *
- * When repositoryId is provided, only that repository's files
- * are cleared. Without it, the entire file store is cleared.
- *
  * @param {string|null} repositoryId
  */
 function clearFiles(repositoryId = null) {
   if (repositoryId === null) {
-    files.clear();
+    db.prepare("DELETE FROM files").run();
     return;
   }
 
-  for (const [fileId, file] of files.entries()) {
-    if (file.repositoryId === repositoryId) {
-      files.delete(fileId);
-    }
-  }
+  db.prepare(`
+    DELETE FROM files WHERE repositoryId = ?
+  `).run(repositoryId);
 }
 
 module.exports = {
