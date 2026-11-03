@@ -536,7 +536,6 @@ app.use((error, req, res, next) => {
 app.get("/api/users", authenticate, authorize("members:manage"), (req, res) => {
   res.json({ users: listUsers() });
 });
-});
 
 const PORT = process.env.PORT || 3000;
 
