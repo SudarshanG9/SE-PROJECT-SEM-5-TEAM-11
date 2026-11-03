@@ -9,3 +9,6 @@ coverage/
 
 # SQLite database files
 backend/data/
+
+# SQLite database files
+backend/data/
