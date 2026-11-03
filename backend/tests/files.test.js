@@ -1,3 +1,4 @@
+
 import request from "supertest";
 import app from "../server.js";
 import repositoryStore from "../repositories.js";
@@ -18,22 +19,40 @@ const {
   clearFiles,
 } = fileStore;
 
+// ==========================================
+// FILE MANAGEMENT DATA LAYER TESTS
+// ==========================================
+
 describe("File management data layer", () => {
+  let repository1;
+  let repository2;
+
   beforeEach(() => {
     clearFiles();
+    clearRepositories();
+
+    repository1 = createRepository({
+      name: "Test Repository 1",
+      description: "First test repository",
+    });
+
+    repository2 = createRepository({
+      name: "Test Repository 2",
+      description: "Second test repository",
+    });
   });
 
   // CREATE FILE TESTS
   describe("createFile()", () => {
     it("creates a file with a unique ID and timestamps", () => {
       const file = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
         content: "console.log('Hello');",
       });
 
       expect(file.id).toBeTruthy();
-      expect(file.repositoryId).toBe("repo-1");
+      expect(file.repositoryId).toBe(repository1.id);
       expect(file.name).toBe("index.js");
       expect(file.content).toBe("console.log('Hello');");
       expect(file.createdAt).toBeTruthy();
@@ -42,7 +61,7 @@ describe("File management data layer", () => {
 
     it("trims whitespace from the filename", () => {
       const file = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "  index.js  ",
       });
 
@@ -61,7 +80,7 @@ describe("File management data layer", () => {
     it("rejects an empty filename", () => {
       expect(() =>
         createFile({
-          repositoryId: "repo-1",
+          repositoryId: repository1.id,
           name: "   ",
         })
       ).toThrow("A non-empty file name is required.");
@@ -70,7 +89,7 @@ describe("File management data layer", () => {
     it("rejects non-string file content", () => {
       expect(() =>
         createFile({
-          repositoryId: "repo-1",
+          repositoryId: repository1.id,
           name: "index.js",
           content: 123,
         })
@@ -82,42 +101,42 @@ describe("File management data layer", () => {
   describe("getFiles()", () => {
     it("returns only files belonging to the requested repository", () => {
       createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
       });
 
       createFile({
-        repositoryId: "repo-2",
+        repositoryId: repository2.id,
         name: "app.js",
       });
 
-      const result = getFiles("repo-1");
+      const result = getFiles(repository1.id);
 
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe("index.js");
     });
 
     it("returns an empty array when no files exist", () => {
-      expect(getFiles("repo-1")).toEqual([]);
+      expect(getFiles(repository1.id)).toEqual([]);
     });
 
     it("sorts files alphabetically by filename", () => {
       createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "main.js",
       });
 
       createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "app.js",
       });
 
       createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
       });
 
-      const result = getFiles("repo-1");
+      const result = getFiles(repository1.id);
 
       expect(result.map((file) => file.name)).toEqual([
         "app.js",
@@ -131,28 +150,32 @@ describe("File management data layer", () => {
   describe("getFileById()", () => {
     it("returns a file when the ID and repository match", () => {
       const created = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
         content: "Hello",
       });
 
-      const result = getFileById("repo-1", created.id);
+      const result = getFileById(repository1.id, created.id);
 
       expect(result).not.toBeNull();
       expect(result.id).toBe(created.id);
     });
 
     it("returns null when the file does not exist", () => {
-      expect(getFileById("repo-1", "unknown-id")).toBeNull();
+      expect(
+        getFileById(repository1.id, "unknown-id")
+      ).toBeNull();
     });
 
     it("does not expose a file through another repository", () => {
       const created = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
       });
 
-      expect(getFileById("repo-2", created.id)).toBeNull();
+      expect(
+        getFileById(repository2.id, created.id)
+      ).toBeNull();
     });
   });
 
@@ -160,14 +183,18 @@ describe("File management data layer", () => {
   describe("updateFile()", () => {
     it("updates file content", () => {
       const created = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
         content: "Old content",
       });
 
-      const updated = updateFile("repo-1", created.id, {
-        content: "New content",
-      });
+      const updated = updateFile(
+        repository1.id,
+        created.id,
+        {
+          content: "New content",
+        }
+      );
 
       expect(updated.content).toBe("New content");
       expect(updated.name).toBe("index.js");
@@ -175,26 +202,34 @@ describe("File management data layer", () => {
 
     it("updates and trims the filename", () => {
       const created = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "old.js",
       });
 
-      const updated = updateFile("repo-1", created.id, {
-        name: "  new.js  ",
-      });
+      const updated = updateFile(
+        repository1.id,
+        created.id,
+        {
+          name: "  new.js  ",
+        }
+      );
 
       expect(updated.name).toBe("new.js");
     });
 
     it("updates the updatedAt timestamp", () => {
       const created = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
       });
 
-      const updated = updateFile("repo-1", created.id, {
-        content: "Updated",
-      });
+      const updated = updateFile(
+        repository1.id,
+        created.id,
+        {
+          content: "Updated",
+        }
+      );
 
       expect(updated.updatedAt).toBeTruthy();
 
@@ -207,35 +242,47 @@ describe("File management data layer", () => {
 
     it("returns null when the file does not exist", () => {
       expect(
-        updateFile("repo-1", "unknown-id", {
-          content: "Updated",
-        })
+        updateFile(
+          repository1.id,
+          "unknown-id",
+          {
+            content: "Updated",
+          }
+        )
       ).toBeNull();
     });
 
     it("rejects an empty updated filename", () => {
       const created = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
       });
 
       expect(() =>
-        updateFile("repo-1", created.id, {
-          name: " ",
-        })
+        updateFile(
+          repository1.id,
+          created.id,
+          {
+            name: " ",
+          }
+        )
       ).toThrow("File name must be a non-empty string.");
     });
 
     it("rejects non-string updated content", () => {
       const created = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
       });
 
       expect(() =>
-        updateFile("repo-1", created.id, {
-          content: 123,
-        })
+        updateFile(
+          repository1.id,
+          created.id,
+          {
+            content: 123,
+          }
+        )
       ).toThrow("File content must be a string.");
     });
   });
@@ -244,26 +291,38 @@ describe("File management data layer", () => {
   describe("deleteFile()", () => {
     it("deletes an existing file", () => {
       const created = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
       });
 
-      expect(deleteFile("repo-1", created.id)).toBe(true);
-      expect(getFileById("repo-1", created.id)).toBeNull();
+      expect(
+        deleteFile(repository1.id, created.id)
+      ).toBe(true);
+
+      expect(
+        getFileById(repository1.id, created.id)
+      ).toBeNull();
     });
 
     it("returns false when the file does not exist", () => {
-      expect(deleteFile("repo-1", "unknown-id")).toBe(false);
+      expect(
+        deleteFile(repository1.id, "unknown-id")
+      ).toBe(false);
     });
 
     it("does not delete a file belonging to another repository", () => {
       const created = createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "index.js",
       });
 
-      expect(deleteFile("repo-2", created.id)).toBe(false);
-      expect(getFileById("repo-1", created.id)).not.toBeNull();
+      expect(
+        deleteFile(repository2.id, created.id)
+      ).toBe(false);
+
+      expect(
+        getFileById(repository1.id, created.id)
+      ).not.toBeNull();
     });
   });
 
@@ -271,39 +330,43 @@ describe("File management data layer", () => {
   describe("clearFiles()", () => {
     it("clears all files when no repository ID is supplied", () => {
       createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "one.js",
       });
 
       createFile({
-        repositoryId: "repo-2",
+        repositoryId: repository2.id,
         name: "two.js",
       });
 
       clearFiles();
 
-      expect(getFiles("repo-1")).toEqual([]);
-      expect(getFiles("repo-2")).toEqual([]);
+      expect(getFiles(repository1.id)).toEqual([]);
+      expect(getFiles(repository2.id)).toEqual([]);
     });
 
     it("clears only the files belonging to the supplied repository", () => {
       createFile({
-        repositoryId: "repo-1",
+        repositoryId: repository1.id,
         name: "one.js",
       });
 
       createFile({
-        repositoryId: "repo-2",
+        repositoryId: repository2.id,
         name: "two.js",
       });
 
-      clearFiles("repo-1");
+      clearFiles(repository1.id);
 
-      expect(getFiles("repo-1")).toEqual([]);
-      expect(getFiles("repo-2")).toHaveLength(1);
+      expect(getFiles(repository1.id)).toEqual([]);
+      expect(getFiles(repository2.id)).toHaveLength(1);
     });
   });
 });
+
+// ==========================================
+// FILE MANAGEMENT REST API TESTS
+// ==========================================
 
 describe("File management REST API", () => {
   let repository;
@@ -318,7 +381,7 @@ describe("File management REST API", () => {
     });
   });
 
-  
+  // GET ALL FILES API
   describe("GET /api/repositories/:id/files", () => {
     it("returns all files in a repository", async () => {
       createFile({
@@ -344,6 +407,7 @@ describe("File management REST API", () => {
     });
   });
 
+  // CREATE FILE API
   describe("POST /api/repositories/:id/files", () => {
     it("creates a file successfully", async () => {
       const response = await request(app)
@@ -433,6 +497,7 @@ describe("File management REST API", () => {
     });
   });
 
+  // GET FILE BY ID API
   describe("GET /api/repositories/:id/files/:fileId", () => {
     it("returns a file by ID", async () => {
       const created = createFile({
@@ -470,6 +535,7 @@ describe("File management REST API", () => {
     });
   });
 
+  // UPDATE FILE API
   describe("PUT /api/repositories/:id/files/:fileId", () => {
     it("updates file content", async () => {
       const created = createFile({
@@ -548,6 +614,7 @@ describe("File management REST API", () => {
     });
   });
 
+  // DELETE FILE API
   describe("DELETE /api/repositories/:id/files/:fileId", () => {
     it("deletes a file successfully", async () => {
       const created = createFile({
