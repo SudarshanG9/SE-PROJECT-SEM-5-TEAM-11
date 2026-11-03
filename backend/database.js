@@ -73,6 +73,23 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_commits_repository
     ON commits(repositoryId);
+
+  CREATE TABLE IF NOT EXISTS users (
+    id        TEXT PRIMARY KEY,
+    name      TEXT NOT NULL,
+    role      TEXT NOT NULL CHECK(role IN ('viewer','contributor','maintainer','owner')),
+    createdAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS tokens (
+    token     TEXT PRIMARY KEY,
+    userId    TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_tokens_userId
+    ON tokens(userId);
 `);
 const repositoryColumns = db
     .prepare("PRAGMA table_info(repositories)")
@@ -85,6 +102,37 @@ if (!repositoryColumns.includes("description")) {
 
 if (!repositoryColumns.includes("updatedAt")) {
     db.exec("ALTER TABLE repositories ADD COLUMN updatedAt TEXT");
+}
+
+// ─── Seed default RBAC users and tokens (runs only when the table is empty) ──
+// These accounts match the hardcoded tokens used throughout rbac.test.js and
+// api.test.js so all existing tests continue to pass without modification.
+const userCount = db.prepare("SELECT COUNT(*) AS n FROM users").get().n;
+
+if (userCount === 0) {
+    const insertUser = db.prepare(
+        "INSERT INTO users (id, name, role, createdAt) VALUES (?, ?, ?, ?)"
+    );
+    const insertToken = db.prepare(
+        "INSERT INTO tokens (token, userId, createdAt) VALUES (?, ?, ?)"
+    );
+
+    const seedUsers = [
+        { id: "u1", name: "Alice", role: "owner",       token: "token-alice" },
+        { id: "u2", name: "Bob",   role: "maintainer",  token: "token-bob"   },
+        { id: "u3", name: "Carol", role: "contributor", token: "token-carol" },
+        { id: "u4", name: "Dave",  role: "viewer",      token: "token-dave"  },
+    ];
+
+    const seed = db.transaction((users) => {
+        const now = new Date().toISOString();
+        for (const u of users) {
+            insertUser.run(u.id, u.name, u.role, now);
+            insertToken.run(u.token, u.id, now);
+        }
+    });
+
+    seed(seedUsers);
 }
 
 console.log("SQLite database initialized successfully.");
