@@ -1,6 +1,5 @@
 const { randomUUID } = require("node:crypto");
-
-const repositories = new Map();
+const db = require("./database");
 
 function createRepository({ name, description = "" }) {
   const repository = {
@@ -10,21 +9,51 @@ function createRepository({ name, description = "" }) {
     createdAt: new Date().toISOString(),
   };
 
-  repositories.set(repository.id, repository);
+  db.prepare(`
+    INSERT INTO repositories (id, name, description, createdAt)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    repository.id,
+    repository.name,
+    repository.description,
+    repository.createdAt
+  );
 
   return repository;
 }
 
 function getRepositories() {
-  return Array.from(repositories.values());
+  return db.prepare(`
+    SELECT id, name, description, createdAt, updatedAt
+    FROM repositories
+  `).all().map(repository => {
+    if (!repository.updatedAt) {
+      delete repository.updatedAt;
+    }
+    return repository;
+  });
 }
 
 function getRepositoryById(id) {
-  return repositories.get(id) || null;
+  const repository = db.prepare(`
+    SELECT id, name, description, createdAt, updatedAt
+    FROM repositories
+    WHERE id = ?
+  `).get(id);
+
+  if (!repository) {
+    return null;
+  }
+
+  if (!repository.updatedAt) {
+    delete repository.updatedAt;
+  }
+
+  return repository;
 }
 
 function updateRepository(id, updates) {
-  const repository = repositories.get(id);
+  const repository = getRepositoryById(id);
 
   if (!repository) {
     return null;
@@ -41,17 +70,30 @@ function updateRepository(id, updates) {
     updatedAt: new Date().toISOString(),
   };
 
-  repositories.set(id, updatedRepository);
+  db.prepare(`
+    UPDATE repositories
+    SET name = ?, description = ?, updatedAt = ?
+    WHERE id = ?
+  `).run(
+    updatedRepository.name,
+    updatedRepository.description,
+    updatedRepository.updatedAt,
+    id
+  );
 
   return updatedRepository;
 }
 
 function deleteRepository(id) {
-  return repositories.delete(id);
+  const result = db.prepare(`
+    DELETE FROM repositories WHERE id = ?
+  `).run(id);
+
+  return result.changes > 0;
 }
 
 function clearRepositories() {
-  repositories.clear();
+  db.prepare("DELETE FROM repositories").run();
 }
 
 module.exports = {
