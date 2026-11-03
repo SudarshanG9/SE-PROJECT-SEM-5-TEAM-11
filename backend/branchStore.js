@@ -1,37 +1,47 @@
 const { randomUUID } = require("node:crypto");
+const db = require("./database");
 
-const branches = new Map();
-const commits = new Map();
+// Convert SQLite integer values into JavaScript booleans.
+function formatBranch(branch) {
+  if (!branch) return null;
 
+  return {
+    ...branch,
+    isDefault: Boolean(branch.isDefault),
+    isProtected: Boolean(branch.isProtected),
+  };
+}
+
+// Get all branches belonging to a repository.
 function getRepositoryBranches(repositoryId) {
-  return Array.from(branches.values())
-    .filter((branch) => branch.repositoryId === repositoryId)
-    .sort((a, b) => {
-      if (a.isDefault !== b.isDefault) {
-        return a.isDefault ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
+  const rows = db.prepare(`
+    SELECT *
+    FROM branches
+    WHERE repositoryId = ?
+    ORDER BY isDefault DESC, name COLLATE NOCASE ASC
+  `).all(repositoryId);
+
+  return rows.map(formatBranch);
 }
 
+// Get a branch by ID, ensuring it belongs to the repository.
 function getBranch(repositoryId, branchId) {
-  const branch = branches.get(branchId);
+  const branch = db.prepare(`
+    SELECT *
+    FROM branches
+    WHERE id = ? AND repositoryId = ?
+  `).get(branchId, repositoryId);
 
-  if (!branch || branch.repositoryId !== repositoryId) {
-    return null;
-  }
-
-  return branch;
+  return formatBranch(branch);
 }
 
+// Get a commit by ID, ensuring it belongs to the repository.
 function getCommit(repositoryId, commitId) {
-  const commit = commits.get(commitId);
-
-  if (!commit || commit.repositoryId !== repositoryId) {
-    return null;
-  }
-
-  return commit;
+  return db.prepare(`
+    SELECT *
+    FROM commits
+    WHERE id = ? AND repositoryId = ?
+  `).get(commitId, repositoryId) || null;
 }
 
 // Every new repository starts with a protected main branch
@@ -70,8 +80,45 @@ function initializeRepository(repositoryId) {
     updatedAt: now,
   };
 
-  commits.set(commitId, initialCommit);
-  branches.set(branchId, mainBranch);
+  const initializeTransaction = db.transaction(() => {
+    db.prepare(`
+      INSERT INTO commits (
+        id, repositoryId, branchId, message,
+        code, parentCommitId, createdAt
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      initialCommit.id,
+      initialCommit.repositoryId,
+      initialCommit.branchId,
+      initialCommit.message,
+      initialCommit.code,
+      initialCommit.parentCommitId,
+      initialCommit.createdAt
+    );
+
+    db.prepare(`
+      INSERT INTO branches (
+        id, repositoryId, name, isDefault, isProtected,
+        baseBranchId, baseCommitId, headCommitId,
+        createdAt, updatedAt
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      mainBranch.id,
+      mainBranch.repositoryId,
+      mainBranch.name,
+      1,
+      1,
+      mainBranch.baseBranchId,
+      mainBranch.baseCommitId,
+      mainBranch.headCommitId,
+      mainBranch.createdAt,
+      mainBranch.updatedAt
+    );
+  });
+
+  initializeTransaction();
 
   return mainBranch;
 }
@@ -84,6 +131,7 @@ function getBranchById(repositoryId, branchId) {
   return getBranch(repositoryId, branchId);
 }
 
+// Get commits, optionally following the parent history of a branch.
 function getCommits(repositoryId, branchId = null) {
   let visibleCommitIds = null;
 
@@ -109,14 +157,20 @@ function getCommits(repositoryId, branchId = null) {
     }
   }
 
-  return Array.from(commits.values())
-    .filter((commit) => {
-      return (
-        commit.repositoryId === repositoryId &&
-        (!visibleCommitIds || visibleCommitIds.has(commit.id))
-      );
-    })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const allCommits = db.prepare(`
+    SELECT *
+    FROM commits
+    WHERE repositoryId = ?
+    ORDER BY createdAt DESC
+  `).all(repositoryId);
+
+  if (!visibleCommitIds) {
+    return allCommits;
+  }
+
+  return allCommits.filter((commit) =>
+    visibleCommitIds.has(commit.id)
+  );
 }
 
 function createBranch({
@@ -132,23 +186,32 @@ function createBranch({
     sourceCommit = getCommit(repositoryId, sourceCommitId);
 
     if (!sourceCommit) {
-      return { error: "The selected commit does not exist in this repository." };
+      return {
+        error: "The selected commit does not exist in this repository.",
+      };
     }
 
     sourceBranch = getBranch(repositoryId, sourceCommit.branchId);
   } else {
     sourceBranch = sourceBranchId
       ? getBranch(repositoryId, sourceBranchId)
-      : getRepositoryBranches(repositoryId).find((branch) => branch.isDefault);
+      : getRepositoryBranches(repositoryId).find(
+          (branch) => branch.isDefault
+        );
 
     if (!sourceBranch) {
       return { error: "The selected base branch does not exist." };
     }
 
-    sourceCommit = getCommit(repositoryId, sourceBranch.headCommitId);
+    sourceCommit = getCommit(
+      repositoryId,
+      sourceBranch.headCommitId
+    );
 
     if (!sourceCommit) {
-      return { error: "The selected base branch has no valid commit." };
+      return {
+        error: "The selected base branch has no valid commit.",
+      };
     }
   }
 
@@ -167,7 +230,25 @@ function createBranch({
     updatedAt: now,
   };
 
-  branches.set(branch.id, branch);
+  db.prepare(`
+    INSERT INTO branches (
+      id, repositoryId, name, isDefault, isProtected,
+      baseBranchId, baseCommitId, headCommitId,
+      createdAt, updatedAt
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    branch.id,
+    branch.repositoryId,
+    branch.name,
+    0,
+    0,
+    branch.baseBranchId,
+    branch.baseCommitId,
+    branch.headCommitId,
+    branch.createdAt,
+    branch.updatedAt
+  );
 
   return { branch };
 }
@@ -186,10 +267,12 @@ function renameBranch(repositoryId, branchId, newName) {
     };
   }
 
+  const trimmedName = newName.trim();
+
   const duplicate = getRepositoryBranches(repositoryId).some(
     (item) =>
       item.id !== branchId &&
-      item.name.toLowerCase() === newName.trim().toLowerCase()
+      item.name.toLowerCase() === trimmedName.toLowerCase()
   );
 
   if (duplicate) {
@@ -199,15 +282,17 @@ function renameBranch(repositoryId, branchId, newName) {
     };
   }
 
-  const updatedBranch = {
-    ...branch,
-    name: newName.trim(),
-    updatedAt: new Date().toISOString(),
+  const updatedAt = new Date().toISOString();
+
+  db.prepare(`
+    UPDATE branches
+    SET name = ?, updatedAt = ?
+    WHERE id = ? AND repositoryId = ?
+  `).run(trimmedName, updatedAt, branchId, repositoryId);
+
+  return {
+    branch: getBranch(repositoryId, branchId),
   };
-
-  branches.set(branchId, updatedBranch);
-
-  return { branch: updatedBranch };
 }
 
 function deleteBranch(repositoryId, branchId) {
@@ -224,7 +309,10 @@ function deleteBranch(repositoryId, branchId) {
     };
   }
 
-  branches.delete(branchId);
+  db.prepare(`
+    DELETE FROM branches
+    WHERE id = ? AND repositoryId = ?
+  `).run(branchId, repositoryId);
 
   // Commits are retained because another branch may still reference them.
   return { success: true };
@@ -249,15 +337,42 @@ function createCommit({ repositoryId, branchId, message, code }) {
     createdAt: now,
   };
 
-  commits.set(commit.id, commit);
-
   const updatedBranch = {
     ...branch,
     headCommitId: commit.id,
     updatedAt: now,
   };
 
-  branches.set(branchId, updatedBranch);
+  const commitTransaction = db.transaction(() => {
+    db.prepare(`
+      INSERT INTO commits (
+        id, repositoryId, branchId, message,
+        code, parentCommitId, createdAt
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      commit.id,
+      commit.repositoryId,
+      commit.branchId,
+      commit.message,
+      commit.code,
+      commit.parentCommitId,
+      commit.createdAt
+    );
+
+    db.prepare(`
+      UPDATE branches
+      SET headCommitId = ?, updatedAt = ?
+      WHERE id = ? AND repositoryId = ?
+    `).run(
+      commit.id,
+      now,
+      branchId,
+      repositoryId
+    );
+  });
+
+  commitTransaction();
 
   return {
     commit,
@@ -265,23 +380,31 @@ function createCommit({ repositoryId, branchId, message, code }) {
   };
 }
 
+// Delete all branches and commits belonging to a repository.
 function deleteRepositoryBranches(repositoryId) {
-  for (const [id, branch] of branches.entries()) {
-    if (branch.repositoryId === repositoryId) {
-      branches.delete(id);
-    }
-  }
+  const deleteTransaction = db.transaction(() => {
+    db.prepare(`
+      DELETE FROM branches
+      WHERE repositoryId = ?
+    `).run(repositoryId);
 
-  for (const [id, commit] of commits.entries()) {
-    if (commit.repositoryId === repositoryId) {
-      commits.delete(id);
-    }
-  }
+    db.prepare(`
+      DELETE FROM commits
+      WHERE repositoryId = ?
+    `).run(repositoryId);
+  });
+
+  deleteTransaction();
 }
 
+// Clear all branch and commit data.
 function clearBranchData() {
-  branches.clear();
-  commits.clear();
+  const clearTransaction = db.transaction(() => {
+    db.prepare("DELETE FROM branches").run();
+    db.prepare("DELETE FROM commits").run();
+  });
+
+  clearTransaction();
 }
 
 module.exports = {
