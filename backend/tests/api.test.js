@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import app from "../server.js";
 
+// A contributor-level token is sufficient for all /api/merge tests.
+const AUTH = { Authorization: "Bearer token-carol" };
+
 describe("API basics", () => {
   it("returns 404 for an unknown route", async () => {
     const response = await request(app).get("/api/does-not-exist");
@@ -18,7 +21,7 @@ describe("API basics", () => {
 
 describe("POST /api/merge integration", () => {
   it("combines independent edits through the real merge engine", async () => {
-    const response = await request(app).post("/api/merge").send({
+    const response = await request(app).post("/api/merge").set(AUTH).send({
       base: "a\nb", branchA: "A\nb", branchB: "a\nB",
     });
     expect(response.status).toBe(200);
@@ -29,7 +32,7 @@ describe("POST /api/merge integration", () => {
   });
 
   it("returns conflict details needed by the frontend", async () => {
-    const response = await request(app).post("/api/merge").send({
+    const response = await request(app).post("/api/merge").set(AUTH).send({
       base: "original", branchA: "left", branchB: "right",
     });
     expect(response.status).toBe(200);
@@ -48,19 +51,19 @@ describe("POST /api/merge integration", () => {
     { base: "x", branchA: [], branchB: "z" },
     { base: "x", branchA: "y", branchB: {} },
   ])("rejects invalid request fields: %j", async (body) => {
-    const response = await request(app).post("/api/merge").send(body);
+    const response = await request(app).post("/api/merge").set(AUTH).send(body);
     expect(response.status).toBe(400);
     expect(response.body.error).toEqual(expect.any(String));
   });
 
   it("rejects a missing request body", async () => {
-    const response = await request(app).post("/api/merge");
+    const response = await request(app).post("/api/merge").set(AUTH);
     expect(response.status).toBe(400);
     expect(response.body.error).toContain("Missing required fields");
   });
 
   it("accepts empty strings as valid file content", async () => {
-    const response = await request(app).post("/api/merge").send({
+    const response = await request(app).post("/api/merge").set(AUTH).send({
       base: "", branchA: "", branchB: "new file",
     });
     expect(response.status).toBe(200);
@@ -72,18 +75,18 @@ describe("POST /api/merge integration", () => {
 
 describe('structured request errors', () => {
   it('returns JSON for malformed JSON', async () => {
-    const response = await request(app).post('/api/merge').set('Content-Type', 'application/json').send('{bad');
+    const response = await request(app).post('/api/merge').set(AUTH).set('Content-Type', 'application/json').send('{bad');
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Invalid JSON request body.');
   });
   it('returns JSON for oversized bodies', async () => {
-    const response = await request(app).post('/api/merge').send({base: 'x'.repeat(110000), branchA: '', branchB: ''});
+    const response = await request(app).post('/api/merge').set(AUTH).send({base: 'x'.repeat(110000), branchA: '', branchB: ''});
     expect(response.status).toBe(413);
     expect(response.body.error).toContain('too large');
   });
   it('rejects excessive comparison work', async () => {
     const base = Array.from({length: 1500}, (_, i) => `line ${i}`).join('\n');
-    const response = await request(app).post('/api/merge').send({base, branchA: `${base}\nA`, branchB: `${base}\nB`});
+    const response = await request(app).post('/api/merge').set(AUTH).send({base, branchA: `${base}\nA`, branchB: `${base}\nB`});
     expect(response.status).toBe(413);
     expect(response.body.error).toContain('too large');
   });

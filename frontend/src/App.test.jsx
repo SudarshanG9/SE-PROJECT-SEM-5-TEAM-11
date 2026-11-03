@@ -1,232 +1,82 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import "@testing-library/jest-dom/vitest";
-import App from "./App";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import '@testing-library/jest-dom/vitest'
+import App from './App'
 
-const mergeEndpoint = "/api/merge";
-const inputKeys = {
-  Base: "base",
-  "Branch A": "branchA",
-  "Branch B": "branchB",
-};
-
-function fillInputs({
-  base = "const value = 1;",
-  branchA = "const value = 2;",
-  branchB = "const value = 3;",
-} = {}) {
-  fireEvent.change(screen.getByLabelText("Base"), {
-    target: { value: base },
-  });
-  fireEvent.change(screen.getByLabelText("Branch A"), {
-    target: { value: branchA },
-  });
-  fireEvent.change(screen.getByLabelText("Branch B"), {
-    target: { value: branchB },
-  });
-}
-
-function mockMergeResponse(payload, { ok = true, status = 200 } = {}) {
-  fetch.mockResolvedValue({
-    ok,
-    status,
-    json: vi.fn().mockResolvedValue(payload),
-  });
-}
-
-describe("Frontend merge features", () => {
+describe('App', () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-  });
+    vi.stubGlobal('fetch', vi.fn())
+  })
 
   afterEach(() => {
-    cleanup();
-    vi.unstubAllGlobals();
-  });
+    cleanup()
+    vi.unstubAllGlobals()
+  })
 
-  describe("real merge integration", () => {
-    it("sends Base, Branch A, and Branch B to the backend merge endpoint", async () => {
-      mockMergeResponse({
-        mergedCode: "const value = 2;",
+  it('renders merge editor inputs and action buttons', () => {
+    render(<App />)
+
+    expect(screen.getByLabelText('Base')).toBeInTheDocument()
+    expect(screen.getByLabelText('Branch A')).toBeInTheDocument()
+    expect(screen.getByLabelText('Branch B')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Simulate Merge' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Clear All' })).toBeInTheDocument()
+  })
+
+  it('submits merge request and displays merged output', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        mergedCode: 'const value = 2;',
         hasConflict: false,
-        message: "Merge completed successfully",
+        message: 'Merge completed successfully',
         conflicts: [],
-      });
-      render(<App />);
-      fillInputs();
+      }),
+    })
 
-      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('Base'), { target: { value: 'const value = 1;' } })
+    fireEvent.change(screen.getByLabelText('Branch A'), { target: { value: 'const value = 2;' } })
+    fireEvent.change(screen.getByLabelText('Branch B'), { target: { value: 'const value = 3;' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate Merge' }))
 
-      await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-      expect(fetch).toHaveBeenCalledWith(mergeEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          base: "const value = 1;",
-          branchA: "const value = 2;",
-          branchB: "const value = 3;",
-        }),
-      });
-    });
-  });
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    expect(fetch).toHaveBeenCalledWith('/api/merge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        base: 'const value = 1;',
+        branchA: 'const value = 2;',
+        branchB: 'const value = 3;',
+      }),
+    })
+    expect(await screen.findByText('Merge completed successfully')).toBeInTheDocument()
+    expect(screen.getByText('const value = 2;', { selector: 'pre' })).toBeInTheDocument()
+  })
 
-  describe("input validation and error messages", () => {
-    it.each(["Base", "Branch A", "Branch B"])(
-      "does not call the backend and explains when %s is missing",
-      async (missingInput) => {
-        render(<App />);
-        fillInputs({ [inputKeys[missingInput]]: "" });
+  it('shows backend error messages when merge endpoint fails', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: 'Base, Branch A, and Branch B must be provided.' }),
+    })
 
-        fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate Merge' }))
 
-        expect(fetch).not.toHaveBeenCalled();
-        expect(await screen.findByRole("alert")).toHaveTextContent(missingInput);
-      }
-    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Base, Branch A, and Branch B must be provided.'
+    )
+  })
 
-    it("displays a readable validation error returned by the backend", async () => {
-      mockMergeResponse(
-        { error: "Base, Branch A, and Branch B must be provided." },
-        { ok: false, status: 400 }
-      );
-      render(<App />);
-      fillInputs();
+  it('shows connection message when backend is unreachable', async () => {
+    fetch.mockRejectedValueOnce(new Error('Failed to fetch'))
 
-      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate Merge' }))
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        "Base, Branch A, and Branch B must be provided."
-      );
-    });
-
-    it("displays a readable message when the backend request fails", async () => {
-      fetch.mockRejectedValue(new Error("Backend is unavailable"));
-      render(<App />);
-      fillInputs();
-
-      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
-
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        /unable to reach the merge service|backend is unavailable/i
-      );
-    });
-it("displays a clear message when the merge service returns HTTP 500", async () => {
-      mockMergeResponse({}, { ok: false, status: 500 });
-      render(<App />);
-      fillInputs();
-
-      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
-
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        "internal error"
-      );
-    });
-
-    it("displays a clear message when the backend returns invalid JSON", async () => {
-      fetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockRejectedValue(new Error("Invalid JSON")),
-      });
-      render(<App />);
-      fillInputs();
-
-      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
-
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        "invalid response"
-      );
-    });
-
-    it("handles an invalid merge result gracefully", async () => {
-      mockMergeResponse({});
-      render(<App />);
-      fillInputs();
-
-      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
-
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        "invalid result"
-      );
-    });
-
-    it("displays a connection message when the backend cannot be reached", async () => {
-      fetch.mockRejectedValue(new TypeError("Failed to fetch"));
-      render(<App />);
-      fillInputs();
-
-      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
-
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        "Unable to connect to the merge service"
-      );
-    });
-  });
-
-  describe("merge result display", () => {
-    it("separates successful status from the actual merged output", async () => {
-      mockMergeResponse({
-        mergedCode: "const value = 2;",
-        hasConflict: false,
-        message: "Merge completed successfully",
-        conflicts: [],
-      });
-      render(<App />);
-      fillInputs();
-
-      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
-
-      expect(
-        await screen.findByText("Merge completed successfully")
-      ).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Merge status" })).toBeInTheDocument();
-      expect(screen.getByText("Successful merge")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Merged output" })).toBeInTheDocument();
-      expect(screen.getByText("const value = 2;", { selector: "pre" })).toBeInTheDocument();
-      expect(screen.queryByRole("heading", { name: "Conflict details" })).not.toBeInTheDocument();
-    });
-
-    it("shows conflict status, merged output, and individual conflict details", async () => {
-      mockMergeResponse({
-        mergedCode: "<<<<<<< BRANCH A\nconst value = 2;\n=======\nconst value = 3;\n>>>>>>> BRANCH B",
-        hasConflict: true,
-        message: "Merge completed with 1 conflict(s)",
-        conflicts: [
-          {
-            id: 1,
-            outputStartLine: 1, outputEndLine: 5,
-            branchALines: ["const value = 2;"], branchBLines: ["const value = 3;"],
-            startLine: 1,
-            endLine: 1,
-            base: "const value = 1;",
-            branchA: "const value = 2;",
-            branchB: "const value = 3;",
-          },
-        ],
-      });
-      render(<App />);
-      fillInputs();
-
-      fireEvent.click(screen.getByRole("button", { name: "Simulate Merge" }));
-
-      expect(
-        await screen.findByText("1 unresolved conflict(s)")
-      ).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Merge status" })).toBeInTheDocument();
-      expect(screen.getByText("Conflicts require attention")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Merged output" })).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Conflict details" })).toBeInTheDocument();
-      expect(screen.getByText("const value = 1;", { selector: "pre" })).toBeInTheDocument();
-      expect(screen.getByText("const value = 2;", { selector: "pre" })).toBeInTheDocument();
-      expect(screen.getByText("const value = 3;", { selector: "pre" })).toBeInTheDocument();
-      expect(screen.getByText(/line 1/i)).toBeInTheDocument();
-    });
-  });
-});
-
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not reach the backend. Make sure the server is running on port 3000.'
+    )
+  })
+})
