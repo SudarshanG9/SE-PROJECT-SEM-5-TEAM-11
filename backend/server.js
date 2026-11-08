@@ -197,6 +197,29 @@ function validateFileJsonRequest(req, res, next) {
   next();
 }
 
+// Only these fields may be supplied when creating
+// or updating repository files.
+const ALLOWED_FILE_FIELDS = new Set([
+  "name",
+  "content",
+]);
+
+function validateFilePayloadFields(req, res, next) {
+  const submittedFields = Object.keys(req.body);
+
+  const hasUnexpectedFields = submittedFields.some(
+    (field) => !ALLOWED_FILE_FIELDS.has(field)
+  );
+
+  if (hasUnexpectedFields) {
+    return res.status(400).json({
+      error: "File request contains unsupported fields.",
+    });
+  }
+
+  next();
+}
+
 // Validate file names before creating or updating files.
 
 
@@ -270,6 +293,7 @@ app.get("/api/repositories/:id/files", (req, res) => {
 app.post(
   "/api/repositories/:id/files",
   validateFileJsonRequest,
+  validateFilePayloadFields,
   (req, res) => {
   const repositoryId = req.params.id;
   const { name, content = "" } = req.body || {};
@@ -349,6 +373,7 @@ app.get("/api/repositories/:id/files/:fileId", (req, res) => {
 app.put(
   "/api/repositories/:id/files/:fileId",
   validateFileJsonRequest,
+  validateFilePayloadFields,
   (req, res) => {
   const { id: repositoryId, fileId } = req.params;
   const { name, content } = req.body || {};

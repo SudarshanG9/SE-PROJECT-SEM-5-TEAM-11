@@ -414,6 +414,77 @@ describe("File management REST API", () => {
 
   // CREATE FILE API
   describe("POST /api/repositories/:id/files", () => {
+    it("rejects client-supplied file identifiers", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "secure.js",
+          content: "const safe = true;",
+          id: "attacker-controlled-id",
+        });
+
+      expect(response.status).toBe(400);
+
+      expect(response.body.error).toBe(
+        "File request contains unsupported fields."
+      );
+
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
+    it("rejects unauthorized file metadata during creation", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "example.js",
+          content: "example",
+          repositoryId: "another-repository",
+          createdAt: "2000-01-01T00:00:00.000Z",
+        });
+
+      expect(response.status).toBe(400);
+
+      expect(response.body.error).toBe(
+        "File request contains unsupported fields."
+      );
+
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
+    it("rejects unexpected metadata objects", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "example.js",
+          content: "safe",
+          metadata: {
+            owner: "admin",
+            protected: false,
+          },
+        });
+
+      expect(response.status).toBe(400);
+
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
+    it("rejects prototype-related JSON properties", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .set("Content-Type", "application/json")
+        .send(
+          '{"name":"safe.js","content":"safe","__proto__":{"isAdmin":true}}'
+        );
+
+      expect(response.status).toBe(400);
+
+      expect(response.body.error).toBe(
+        "File request contains unsupported fields."
+      );
+
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
     it("rejects file creation with an unsupported content type", async () => {
       const response = await request(app)
         .post(`/api/repositories/${repository.id}/files`)
@@ -675,6 +746,82 @@ describe("File management REST API", () => {
 
   // UPDATE FILE API
   describe("PUT /api/repositories/:id/files/:fileId", () => {
+    it("rejects attempts to change a file's repository ID", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "original.js",
+        content: "original content",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({
+          content: "modified content",
+          repositoryId: "unauthorized-repository",
+        });
+
+      expect(response.status).toBe(400);
+
+      expect(response.body.error).toBe(
+        "File request contains unsupported fields."
+      );
+
+      const storedFile = getFileById(
+        repository.id,
+        created.id
+      );
+
+      expect(storedFile.repositoryId).toBe(repository.id);
+      expect(storedFile.content).toBe("original content");
+    });
+
+    it("rejects attempts to modify server-managed timestamps", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "original.js",
+        content: "original content",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({
+          content: "modified content",
+          updatedAt: "2000-01-01T00:00:00.000Z",
+        });
+
+      expect(response.status).toBe(400);
+
+      const storedFile = getFileById(
+        repository.id,
+        created.id
+      );
+
+      expect(storedFile.content).toBe("original content");
+      expect(storedFile.updatedAt).toBe(created.updatedAt);
+    });
+
+    it("accepts updates containing only permitted fields", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "original.js",
+        content: "old content",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({
+          name: "updated.js",
+          content: "new content",
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.file.name).toBe("updated.js");
+      expect(response.body.file.content).toBe("new content");
+
+      expect(response.body.file.id).toBe(created.id);
+      expect(response.body.file.repositoryId).toBe(repository.id);
+    });
+
     it("rejects unsupported content types without modifying files", async () => {
       const created = createFile({
         repositoryId: repository.id,
