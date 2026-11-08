@@ -19,6 +19,18 @@ const {
 } = require("./files");
 const { authenticate, authorize } = require("./rbac/middleware");
 const { listUsers } = require("./rbac/users");
+
+const MAX_FILE_CONTENT_BYTES = 1024 * 1024;
+
+const SUPPORTED_FILE_EXTENSIONS = new Set([
+  "c", "cc", "cpp", "cs", "css", "go",
+  "h", "hpp", "html", "java", "js",
+  "json", "jsx", "md", "php", "py",
+  "rb", "rs", "scss", "sh", "sql",
+  "svg", "text", "ts", "tsx", "txt",
+  "xml", "yaml", "yml",
+]);
+
 const app = express();
 const {
   initializeRepository,
@@ -33,6 +45,15 @@ const {
 } = require("./branchStore");
 
 app.use(cors());
+
+// Allow file API requests to contain up to 1 MB of
+// file content plus reasonable JSON encoding overhead.
+app.use(
+  "/api/repositories/:id/files",
+  express.json({ limit: "2mb" })
+);
+
+// Preserve the existing request limit for other APIs.
 app.use(express.json());
 
 app.get("/api/health", (req, res) => {
@@ -156,6 +177,8 @@ app.delete("/api/repositories/:id", (req, res) => {
    ========================================= */
 
 // Validate file names before creating or updating files.
+
+
 function isValidFileName(name) {
   return (
     typeof name === "string" &&
@@ -163,9 +186,38 @@ function isValidFileName(name) {
     name.trim().length <= 255 &&
     name.trim() !== "." &&
     name.trim() !== ".." &&
-    !/[\\/]/.test(name)
+    !/[\\/]/.test(name) &&
+    !/[\x00-\x1F\x7F]/.test(name)
   );
 }
+
+function isSupportedFileExtension(name) {
+  if (typeof name !== "string") {
+    return false;
+  }
+
+  const trimmedName = name.trim();
+  const lastDot = trimmedName.lastIndexOf(".");
+
+  if (lastDot === -1) {
+    return false;
+  }
+
+  const extension = trimmedName
+    .slice(lastDot + 1)
+    .toLowerCase();
+
+  return SUPPORTED_FILE_EXTENSIONS.has(extension);
+}
+
+function isFileContentTooLarge(content) {
+  return (
+    Buffer.byteLength(content, "utf8") >
+    MAX_FILE_CONTENT_BYTES
+  );
+}
+
+
 
 // Check whether another file already uses this name.
 function hasDuplicateFileName(repositoryId, name, excludeFileId = null) {
@@ -206,13 +258,25 @@ app.post("/api/repositories/:id/files", (req, res) => {
 
   if (!isValidFileName(name)) {
     return res.status(400).json({
-      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators.",
+      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators or control characters.",
     });
   }
 
   if (typeof content !== "string") {
     return res.status(400).json({
       error: "File content must be a string.",
+    });
+  }
+
+  if (!isSupportedFileExtension(name)) {
+    return res.status(400).json({
+      error: "Unsupported file type. Choose a supported text or code file.",
+    });
+  }
+
+  if (isFileContentTooLarge(content)) {
+    return res.status(413).json({
+      error: "File content exceeds the 1 MB limit.",
     });
   }
 
@@ -284,13 +348,31 @@ app.put("/api/repositories/:id/files/:fileId", (req, res) => {
 
   if (name !== undefined && !isValidFileName(name)) {
     return res.status(400).json({
-      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators.",
+      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators or control characters.",
     });
   }
 
   if (content !== undefined && typeof content !== "string") {
     return res.status(400).json({
       error: "File content must be a string.",
+    });
+  }
+
+  if (
+    name !== undefined &&
+    !isSupportedFileExtension(name)
+  ) {
+    return res.status(400).json({
+      error: "Unsupported file type. Choose a supported text or code file.",
+    });
+  }
+
+  if (
+    content !== undefined &&
+    isFileContentTooLarge(content)
+  ) {
+    return res.status(413).json({
+      error: "File content exceeds the 1 MB limit.",
     });
   }
 

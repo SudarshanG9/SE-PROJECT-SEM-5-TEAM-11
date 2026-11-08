@@ -409,6 +409,67 @@ describe("File management REST API", () => {
 
   // CREATE FILE API
   describe("POST /api/repositories/:id/files", () => {
+    it("rejects unsupported file extensions", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "malware.exe",
+          content: "example",
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain(
+        "Unsupported file type"
+      );
+
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
+    it("rejects file content larger than 1 MB", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "large.js",
+          content: "x".repeat(1024 * 1024 + 1),
+        });
+
+      expect(response.status).toBe(413);
+      expect(response.body.error).toContain(
+        "1 MB limit"
+      );
+
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
+    it("accepts file content exactly at the 1 MB limit", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "allowed.txt",
+          content: "x".repeat(1024 * 1024),
+        });
+
+      expect(response.status).toBe(201);
+      expect(
+        Buffer.byteLength(response.body.file.content, "utf8")
+      ).toBe(1024 * 1024);
+    });
+
+    it("checks UTF-8 byte size instead of character count", async () => {
+      const content = "€".repeat(350000);
+
+      expect(content.length).toBeLessThan(1024 * 1024);
+
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "unicode.txt",
+          content,
+        });
+
+      expect(response.status).toBe(413);
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
     it("creates a file successfully", async () => {
       const response = await request(app)
         .post(`/api/repositories/${repository.id}/files`)
@@ -455,6 +516,19 @@ describe("File management REST API", () => {
 
       expect(response.status).toBe(400);
     });
+
+    it.each(["bad\u0000name.js", "bad\nname.js"])(
+      "rejects unsafe filename %j",
+      async (name) => {
+        const response = await request(app)
+          .post(`/api/repositories/${repository.id}/files`)
+          .send({ name, content: "" });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain("control characters");
+        expect(getFiles(repository.id)).toHaveLength(0);
+      }
+    );
 
     it("rejects non-string content", async () => {
       const response = await request(app)
@@ -537,6 +611,51 @@ describe("File management REST API", () => {
 
   // UPDATE FILE API
   describe("PUT /api/repositories/:id/files/:fileId", () => {
+    it("rejects renaming a file to an unsupported extension", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "original.js",
+        content: "original content",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({
+          name: "unsafe.exe",
+        });
+
+      expect(response.status).toBe(400);
+
+      const storedFile = getFileById(
+        repository.id,
+        created.id
+      );
+
+      expect(storedFile.name).toBe("original.js");
+    });
+
+    it("rejects oversized updates without changing stored content", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "existing.js",
+        content: "safe original content",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({
+          content: "x".repeat(1024 * 1024 + 1),
+        });
+
+      expect(response.status).toBe(413);
+
+      const storedFile = getFileById(
+        repository.id,
+        created.id
+      );
+
+      expect(storedFile.content).toBe("safe original content");
+    });
     it("updates file content", async () => {
       const created = createFile({
         repositoryId: repository.id,
@@ -569,6 +688,22 @@ describe("File management REST API", () => {
       expect(response.status).toBe(200);
       expect(response.body.file.name).toBe("new.js");
     });
+
+
+    it("rejects control characters when renaming a file", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "original.js",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send({ name: "invalid\nname.js" });
+
+      expect(response.status).toBe(400);
+      expect(getFileById(repository.id, created.id).name).toBe("original.js");
+    });
+
 
     it("rejects an empty update body", async () => {
       const created = createFile({
