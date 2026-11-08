@@ -1,9 +1,14 @@
 
 import request from "supertest";
-import app from "../server.js";
-import repositoryStore from "../repositories.js";
-import fileStore from "../files.js";
+import { createRequire } from "node:module";
 import { describe, it, expect, beforeEach } from "vitest";
+
+// Exercise the actual CommonJS server and matching stores, rather than the
+// replacement file route handlers installed by vitest.setup.js.
+const require = createRequire(import.meta.url);
+const app = require("../server.js");
+const repositoryStore = require("../repositories.js");
+const fileStore = require("../files.js");
 
 const {
   createRepository,
@@ -409,6 +414,65 @@ describe("File management REST API", () => {
 
   // CREATE FILE API
   describe("POST /api/repositories/:id/files", () => {
+    it("rejects file creation with an unsupported content type", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .set("Content-Type", "text/plain")
+        .send("name=invalid.js");
+
+      expect(response.status).toBe(415);
+      expect(response.body.error).toBe(
+        "File API requests must use application/json."
+      );
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
+    it("rejects array request bodies during file creation", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send([
+          {
+            name: "invalid.js",
+            content: "example",
+          },
+        ]);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe(
+        "File API request body must be a JSON object."
+      );
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
+    it("returns a safe JSON error for malformed requests", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .set("Content-Type", "application/json")
+        .send('{"name":');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({
+        error: "Invalid JSON request body.",
+      });
+      expect(response.headers["content-type"]).toMatch(/application\/json/);
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
+    it("returns a safe error for oversized file API requests", async () => {
+      const response = await request(app)
+        .post(`/api/repositories/${repository.id}/files`)
+        .send({
+          name: "oversized.txt",
+          content: "x".repeat(2 * 1024 * 1024 + 128),
+        });
+
+      expect(response.status).toBe(413);
+      expect(response.body.error).toBe(
+        "File API request body is too large."
+      );
+      expect(getFiles(repository.id)).toHaveLength(0);
+    });
+
     it("rejects unsupported file extensions", async () => {
       const response = await request(app)
         .post(`/api/repositories/${repository.id}/files`)
@@ -611,6 +675,64 @@ describe("File management REST API", () => {
 
   // UPDATE FILE API
   describe("PUT /api/repositories/:id/files/:fileId", () => {
+    it("rejects unsupported content types without modifying files", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "original.js",
+        content: "original content",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .set("Content-Type", "text/plain")
+        .send("new content");
+
+      expect(response.status).toBe(415);
+      const storedFile = getFileById(repository.id, created.id);
+      expect(storedFile.content).toBe("original content");
+    });
+
+    it("rejects invalid update body structures", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "original.js",
+        content: "original content",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .send([
+          {
+            content: "modified content",
+          },
+        ]);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe(
+        "File API request body must be a JSON object."
+      );
+      const storedFile = getFileById(repository.id, created.id);
+      expect(storedFile.content).toBe("original content");
+    });
+
+    it("rejects malformed JSON without changing an existing file", async () => {
+      const created = createFile({
+        repositoryId: repository.id,
+        name: "original.js",
+        content: "safe content",
+      });
+
+      const response = await request(app)
+        .put(`/api/repositories/${repository.id}/files/${created.id}`)
+        .set("Content-Type", "application/json")
+        .send('{"content":');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe("Invalid JSON request body.");
+      const storedFile = getFileById(repository.id, created.id);
+      expect(storedFile.content).toBe("safe content");
+    });
+
     it("rejects renaming a file to an unsupported extension", async () => {
       const created = createFile({
         repositoryId: repository.id,

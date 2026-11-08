@@ -176,6 +176,27 @@ app.delete("/api/repositories/:id", (req, res) => {
    FILE MANAGEMENT API
    ========================================= */
 
+// Validate the content type and structure of file API requests.
+function validateFileJsonRequest(req, res, next) {
+  if (!req.is("application/json")) {
+    return res.status(415).json({
+      error: "File API requests must use application/json.",
+    });
+  }
+
+  if (
+    !req.body ||
+    typeof req.body !== "object" ||
+    Array.isArray(req.body)
+  ) {
+    return res.status(400).json({
+      error: "File API request body must be a JSON object.",
+    });
+  }
+
+  next();
+}
+
 // Validate file names before creating or updating files.
 
 
@@ -246,7 +267,10 @@ app.get("/api/repositories/:id/files", (req, res) => {
 
 // POST /api/repositories/:id/files
 // Create a new file inside a repository.
-app.post("/api/repositories/:id/files", (req, res) => {
+app.post(
+  "/api/repositories/:id/files",
+  validateFileJsonRequest,
+  (req, res) => {
   const repositoryId = req.params.id;
   const { name, content = "" } = req.body || {};
 
@@ -322,7 +346,10 @@ app.get("/api/repositories/:id/files/:fileId", (req, res) => {
 
 // PUT /api/repositories/:id/files/:fileId
 // Update a file's name or content.
-app.put("/api/repositories/:id/files/:fileId", (req, res) => {
+app.put(
+  "/api/repositories/:id/files/:fileId",
+  validateFileJsonRequest,
+  (req, res) => {
   const { id: repositoryId, fileId } = req.params;
   const { name, content } = req.body || {};
 
@@ -594,16 +621,60 @@ app.post("/api/merge", authenticate, authorize("merge:create"), (req, res) => {
   });
 });
 
-// Keep parser and merge failures in the same JSON contract as validation errors.
+// Return safe, structured errors without exposing server internals.
 app.use((error, req, res, next) => {
-  if (res.headersSent) return next(error);
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  const isFileApiPath =
+    /^\/api\/repositories\/[^/]+\/files(?:\/[^/]+)?\/?$/.test(
+      req.path
+    );
+
+  // Malformed JSON
   if (error.type === "entity.parse.failed") {
-    return res.status(400).json({ error: "Invalid JSON request body." });
+    return res.status(400).json({
+      error: "Invalid JSON request body.",
+    });
   }
-  if (error.type === "entity.too.large" || error instanceof RangeError) {
-    return res.status(413).json({ error: "Input is too large. Use smaller code snippets." });
+
+  // Unsupported request encoding for file operations
+  if (
+    isFileApiPath &&
+    (
+      error.type === "charset.unsupported" ||
+      error.type === "encoding.unsupported"
+    )
+  ) {
+    return res.status(415).json({
+      error: "Unsupported request encoding for file API.",
+    });
   }
-  return res.status(500).json({ error: "Unable to merge these inputs. Please try again." });
+
+  // Oversized JSON bodies or excessive merge processing
+  if (
+    error.type === "entity.too.large" ||
+    error instanceof RangeError
+  ) {
+    return res.status(413).json({
+      error: isFileApiPath
+        ? "File API request body is too large."
+        : "Input is too large. Use smaller code snippets.",
+    });
+  }
+
+  // Unexpected failures during file API operations
+  if (isFileApiPath) {
+    return res.status(500).json({
+      error: "Unable to process this file request. Please try again.",
+    });
+  }
+
+  // Preserve the existing fallback for other endpoints
+  return res.status(500).json({
+    error: "Unable to merge these inputs. Please try again.",
+  });
 });
 
 /**
