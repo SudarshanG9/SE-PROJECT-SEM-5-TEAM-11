@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CodeVersionInput from './CodeVersionInput'
 import './App.css'
 
 const API_URL = '/api/merge'
@@ -56,40 +57,34 @@ function App() {
         </p>
       </header>
 
-      <section className="editor-grid">
-        <div className="editor-card">
-          <label htmlFor="base">Base</label>
-          <p className="editor-description">The original version</p>
-          <textarea
+      <section aria-labelledby="code-versions-heading">
+        <h2 className="editor-section-title" id="code-versions-heading">
+          Enter Code Versions
+        </h2>
+        <div className="editor-grid">
+          <CodeVersionInput
             id="base"
+            label="Base Version"
+            description="The original source code before branching."
             value={base}
-            onChange={(e) => setBase(e.target.value)}
+            onChange={setBase}
             placeholder="Enter base code here..."
-            spellCheck="false"
           />
-        </div>
-
-        <div className="editor-card">
-          <label htmlFor="branch-a">Branch A</label>
-          <p className="editor-description">First set of changes</p>
-          <textarea
+          <CodeVersionInput
             id="branch-a"
+            label="Branch A Version"
+            description="Contains the first branch's modifications."
             value={branchA}
-            onChange={(e) => setBranchA(e.target.value)}
+            onChange={setBranchA}
             placeholder="Enter Branch A code here..."
-            spellCheck="false"
           />
-        </div>
-
-        <div className="editor-card">
-          <label htmlFor="branch-b">Branch B</label>
-          <p className="editor-description">Second set of changes</p>
-          <textarea
+          <CodeVersionInput
             id="branch-b"
+            label="Branch B Version"
+            description="Contains the second branch's modifications."
             value={branchB}
-            onChange={(e) => setBranchB(e.target.value)}
+            onChange={setBranchB}
             placeholder="Enter Branch B code here..."
-            spellCheck="false"
           />
         </div>
       </section>
