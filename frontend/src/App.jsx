@@ -5,12 +5,21 @@ import './App.css'
 const API_URL = '/api/merge'
 
 function App() {
-  const [base, setBase] = useState('')
-  const [branchA, setBranchA] = useState('')
-  const [branchB, setBranchB] = useState('')
+  const [codeVersions, setCodeVersions] = useState({
+    base: '',
+    branchA: '',
+    branchB: '',
+  })
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  function updateCodeVersion(version, value) {
+    setCodeVersions((currentVersions) => ({
+      ...currentVersions,
+      [version]: value,
+    }))
+  }
 
   async function handleMerge() {
     setError(null)
@@ -21,7 +30,7 @@ function App() {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base, branchA, branchB }),
+        body: JSON.stringify(codeVersions),
       })
 
       const data = await response.json()
@@ -40,9 +49,7 @@ function App() {
   }
 
   function handleClear() {
-    setBase('')
-    setBranchA('')
-    setBranchB('')
+    setCodeVersions({ base: '', branchA: '', branchB: '' })
     setResult(null)
     setError(null)
   }
@@ -66,24 +73,24 @@ function App() {
             id="base"
             label="Base Version"
             description="The original source code before branching."
-            value={base}
-            onChange={setBase}
+            value={codeVersions.base}
+            onChange={(value) => updateCodeVersion('base', value)}
             placeholder="Enter base code here..."
           />
           <CodeVersionInput
             id="branch-a"
             label="Branch A Version"
             description="Contains the first branch's modifications."
-            value={branchA}
-            onChange={setBranchA}
+            value={codeVersions.branchA}
+            onChange={(value) => updateCodeVersion('branchA', value)}
             placeholder="Enter Branch A code here..."
           />
           <CodeVersionInput
             id="branch-b"
             label="Branch B Version"
             description="Contains the second branch's modifications."
-            value={branchB}
-            onChange={setBranchB}
+            value={codeVersions.branchB}
+            onChange={(value) => updateCodeVersion('branchB', value)}
             placeholder="Enter Branch B code here..."
           />
         </div>
