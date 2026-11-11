@@ -19,6 +19,18 @@ const {
 } = require("./files");
 const { authenticate, authorize } = require("./rbac/middleware");
 const { listUsers } = require("./rbac/users");
+
+const MAX_FILE_CONTENT_BYTES = 1024 * 1024;
+
+const SUPPORTED_FILE_EXTENSIONS = new Set([
+  "c", "cc", "cpp", "cs", "css", "go",
+  "h", "hpp", "html", "java", "js",
+  "json", "jsx", "md", "php", "py",
+  "rb", "rs", "scss", "sh", "sql",
+  "svg", "text", "ts", "tsx", "txt",
+  "xml", "yaml", "yml",
+]);
+
 const app = express();
 const {
   initializeRepository,
@@ -33,6 +45,15 @@ const {
 } = require("./branchStore");
 
 app.use(cors());
+
+// Allow file API requests to contain up to 1 MB of
+// file content plus reasonable JSON encoding overhead.
+app.use(
+  "/api/repositories/:id/files",
+  express.json({ limit: "2mb" })
+);
+
+// Preserve the existing request limit for other APIs.
 app.use(express.json());
 
 app.get("/api/health", (req, res) => {
@@ -155,7 +176,53 @@ app.delete("/api/repositories/:id", (req, res) => {
    FILE MANAGEMENT API
    ========================================= */
 
+// Validate the content type and structure of file API requests.
+function validateFileJsonRequest(req, res, next) {
+  if (!req.is("application/json")) {
+    return res.status(415).json({
+      error: "File API requests must use application/json.",
+    });
+  }
+
+  if (
+    !req.body ||
+    typeof req.body !== "object" ||
+    Array.isArray(req.body)
+  ) {
+    return res.status(400).json({
+      error: "File API request body must be a JSON object.",
+    });
+  }
+
+  next();
+}
+
+// Only these fields may be supplied when creating
+// or updating repository files.
+const ALLOWED_FILE_FIELDS = new Set([
+  "name",
+  "content",
+]);
+
+function validateFilePayloadFields(req, res, next) {
+  const submittedFields = Object.keys(req.body);
+
+  const hasUnexpectedFields = submittedFields.some(
+    (field) => !ALLOWED_FILE_FIELDS.has(field)
+  );
+
+  if (hasUnexpectedFields) {
+    return res.status(400).json({
+      error: "File request contains unsupported fields.",
+    });
+  }
+
+  next();
+}
+
 // Validate file names before creating or updating files.
+
+
 function isValidFileName(name) {
   return (
     typeof name === "string" &&
@@ -163,9 +230,38 @@ function isValidFileName(name) {
     name.trim().length <= 255 &&
     name.trim() !== "." &&
     name.trim() !== ".." &&
-    !/[\\/]/.test(name)
+    !/[\\/]/.test(name) &&
+    !/[\x00-\x1F\x7F]/.test(name)
   );
 }
+
+function isSupportedFileExtension(name) {
+  if (typeof name !== "string") {
+    return false;
+  }
+
+  const trimmedName = name.trim();
+  const lastDot = trimmedName.lastIndexOf(".");
+
+  if (lastDot === -1) {
+    return false;
+  }
+
+  const extension = trimmedName
+    .slice(lastDot + 1)
+    .toLowerCase();
+
+  return SUPPORTED_FILE_EXTENSIONS.has(extension);
+}
+
+function isFileContentTooLarge(content) {
+  return (
+    Buffer.byteLength(content, "utf8") >
+    MAX_FILE_CONTENT_BYTES
+  );
+}
+
+
 
 // Check whether another file already uses this name.
 function hasDuplicateFileName(repositoryId, name, excludeFileId = null) {
@@ -194,7 +290,11 @@ app.get("/api/repositories/:id/files", (req, res) => {
 
 // POST /api/repositories/:id/files
 // Create a new file inside a repository.
-app.post("/api/repositories/:id/files", (req, res) => {
+app.post(
+  "/api/repositories/:id/files",
+  validateFileJsonRequest,
+  validateFilePayloadFields,
+  (req, res) => {
   const repositoryId = req.params.id;
   const { name, content = "" } = req.body || {};
 
@@ -206,13 +306,25 @@ app.post("/api/repositories/:id/files", (req, res) => {
 
   if (!isValidFileName(name)) {
     return res.status(400).json({
-      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators.",
+      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators or control characters.",
     });
   }
 
   if (typeof content !== "string") {
     return res.status(400).json({
       error: "File content must be a string.",
+    });
+  }
+
+  if (!isSupportedFileExtension(name)) {
+    return res.status(400).json({
+      error: "Unsupported file type. Choose a supported text or code file.",
+    });
+  }
+
+  if (isFileContentTooLarge(content)) {
+    return res.status(413).json({
+      error: "File content exceeds the 1 MB limit.",
     });
   }
 
@@ -258,7 +370,11 @@ app.get("/api/repositories/:id/files/:fileId", (req, res) => {
 
 // PUT /api/repositories/:id/files/:fileId
 // Update a file's name or content.
-app.put("/api/repositories/:id/files/:fileId", (req, res) => {
+app.put(
+  "/api/repositories/:id/files/:fileId",
+  validateFileJsonRequest,
+  validateFilePayloadFields,
+  (req, res) => {
   const { id: repositoryId, fileId } = req.params;
   const { name, content } = req.body || {};
 
@@ -284,13 +400,31 @@ app.put("/api/repositories/:id/files/:fileId", (req, res) => {
 
   if (name !== undefined && !isValidFileName(name)) {
     return res.status(400).json({
-      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators.",
+      error: "A valid file name is required. Names must be 1-255 characters and cannot contain path separators or control characters.",
     });
   }
 
   if (content !== undefined && typeof content !== "string") {
     return res.status(400).json({
       error: "File content must be a string.",
+    });
+  }
+
+  if (
+    name !== undefined &&
+    !isSupportedFileExtension(name)
+  ) {
+    return res.status(400).json({
+      error: "Unsupported file type. Choose a supported text or code file.",
+    });
+  }
+
+  if (
+    content !== undefined &&
+    isFileContentTooLarge(content)
+  ) {
+    return res.status(413).json({
+      error: "File content exceeds the 1 MB limit.",
     });
   }
 
@@ -512,16 +646,60 @@ app.post("/api/merge", authenticate, authorize("merge:create"), (req, res) => {
   });
 });
 
-// Keep parser and merge failures in the same JSON contract as validation errors.
+// Return safe, structured errors without exposing server internals.
 app.use((error, req, res, next) => {
-  if (res.headersSent) return next(error);
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  const isFileApiPath =
+    /^\/api\/repositories\/[^/]+\/files(?:\/[^/]+)?\/?$/.test(
+      req.path
+    );
+
+  // Malformed JSON
   if (error.type === "entity.parse.failed") {
-    return res.status(400).json({ error: "Invalid JSON request body." });
+    return res.status(400).json({
+      error: "Invalid JSON request body.",
+    });
   }
-  if (error.type === "entity.too.large" || error instanceof RangeError) {
-    return res.status(413).json({ error: "Input is too large. Use smaller code snippets." });
+
+  // Unsupported request encoding for file operations
+  if (
+    isFileApiPath &&
+    (
+      error.type === "charset.unsupported" ||
+      error.type === "encoding.unsupported"
+    )
+  ) {
+    return res.status(415).json({
+      error: "Unsupported request encoding for file API.",
+    });
   }
-  return res.status(500).json({ error: "Unable to merge these inputs. Please try again." });
+
+  // Oversized JSON bodies or excessive merge processing
+  if (
+    error.type === "entity.too.large" ||
+    error instanceof RangeError
+  ) {
+    return res.status(413).json({
+      error: isFileApiPath
+        ? "File API request body is too large."
+        : "Input is too large. Use smaller code snippets.",
+    });
+  }
+
+  // Unexpected failures during file API operations
+  if (isFileApiPath) {
+    return res.status(500).json({
+      error: "Unable to process this file request. Please try again.",
+    });
+  }
+
+  // Preserve the existing fallback for other endpoints
+  return res.status(500).json({
+    error: "Unable to merge these inputs. Please try again.",
+  });
 });
 
 /**
