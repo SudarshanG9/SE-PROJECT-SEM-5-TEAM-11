@@ -93,6 +93,70 @@
   margin: 0;
 }
 
+.scenario-card {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid #d8deea;
+  border-radius: 10px;
+  background: #fafbfe;
+}
+
+.scenario-card.conflict-example {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.scenario-card h4 {
+  margin: 0 0 8px;
+  color: #172033;
+  font-size: 17px;
+}
+
+.scenario-card p {
+  margin: 10px 0;
+}
+
+.scenario-code-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.scenario-code-grid h5 {
+  margin: 0 0 6px;
+  color: #344054;
+  font-size: 13px;
+}
+
+.scenario-card pre {
+  overflow-x: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #e2e6ef;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.scenario-card .scenario-output {
+  margin-top: 10px;
+  white-space: pre-wrap;
+}
+
+.marker-explanations {
+  display: grid;
+  gap: 6px;
+  padding-left: 22px;
+  color: #344054;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .guide-faq {
   margin-bottom: 0;
 }
@@ -125,9 +189,27 @@
 
   .version-list > div,
   .guide-faq > div,
-  .result-types > div {
+  .result-types > div,
+  .scenario-card {
     border-color: #373947;
     background: #16171d;
+  }
+
+  .scenario-card.conflict-example {
+    border-color: #92400e;
+    background: #292316;
+  }
+
+  .scenario-card h4,
+  .scenario-code-grid h5,
+  .marker-explanations {
+    color: #f3f4f6;
+  }
+
+  .scenario-card pre {
+    border-color: #373947;
+    background: #1f2028;
+    color: #f3f4f6;
   }
 }
 
@@ -137,6 +219,10 @@
   }
 
   .result-types {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-code-grid {
     grid-template-columns: 1fr;
   }
 }

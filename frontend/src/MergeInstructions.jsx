@@ -1,6 +1,16 @@
 import './MergeInstructions.css'
 
 function MergeInstructions() {
+  const conflictingMergedCode = [
+    'function greet() {',
+    '<' + '<<<<<< BRANCH A',
+    '    console.log("Hello from Branch A");',
+    '=======',
+    '    console.log("Hello from Branch B");',
+    '>' + '>>>>>> BRANCH B',
+    '}',
+  ].join('\n')
+
   return (
     <article className="instructions-page" aria-labelledby="instructions-title">
       <header className="instructions-header">
@@ -65,6 +75,100 @@ function MergeInstructions() {
           <li>Review the code under <strong>Merged Code</strong>.</li>
           <li>Examine the conflict count and details, if any are reported.</li>
         </ol>
+      </section>
+
+      <section className="instructions-section" aria-labelledby="guide-examples">
+        <h3 id="guide-examples">Example scenarios</h3>
+        <section className="scenario-card" aria-labelledby="clean-example">
+          <h4 id="clean-example">Non-conflicting changes</h4>
+          <p>
+            Branch A adds a <code>welcome</code> function between the existing
+            functions. Branch B adds a <code>goodbye</code> function after the
+            existing code. These are separate insertion points, so neither
+            change overwrites the other.
+          </p>
+          <div className="scenario-code-grid">
+            <div>
+              <h5>Base</h5>
+              <pre>{`function greet() {
+    console.log("Hello");
+}
+
+function status() {
+    console.log("Ready");
+}`}</pre>
+            </div>
+            <div>
+              <h5>Branch A</h5>
+              <pre>{`function greet() {
+    console.log("Hello");
+}
+
+function welcome() {
+    console.log("Welcome");
+}
+
+function status() {
+    console.log("Ready");
+}`}</pre>
+            </div>
+            <div>
+              <h5>Branch B</h5>
+              <pre>{`function greet() {
+    console.log("Hello");
+}
+
+function status() {
+    console.log("Ready");
+}
+
+function goodbye() {
+    console.log("Goodbye");
+}`}</pre>
+            </div>
+          </div>
+          <p>
+            The merge engine combines these independent changes and reports
+            <strong> Merge completed successfully</strong>. The merged output is:
+          </p>
+          <pre className="scenario-output">{`function greet() {
+    console.log("Hello");
+}
+
+function welcome() {
+    console.log("Welcome");
+}
+
+function status() {
+    console.log("Ready");
+}
+
+function goodbye() {
+    console.log("Goodbye");
+}`}</pre>
+        </section>
+
+        <section className="scenario-card conflict-example" aria-labelledby="conflict-example">
+          <h4 id="conflict-example">Conflicting changes</h4>
+          <p>
+            Both developers change the same original <code>console.log</code>{' '}
+            line, but they replace it with different text. The merge engine
+            reports one conflict on line 2. Its merged output is:
+          </p>
+          <pre className="scenario-output">{conflictingMergedCode}</pre>
+          <ul className="marker-explanations">
+            <li><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; BRANCH A</code> begins Branch A&apos;s version.</li>
+            <li><code>=======</code> separates the two versions.</li>
+            <li><code>&gt;&gt;&gt;&gt;&gt;&gt;&gt; BRANCH B</code> ends the conflict after Branch B&apos;s version.</li>
+          </ul>
+          <p>
+            The service reports <strong>Merge completed with 1 conflict(s)</strong>,
+            and the simulator shows <strong>1 conflict detected</strong> with
+            both branch versions and the Base line. This is illustrative
+            conflict output; review the alternatives and decide what the final
+            code should be.
+          </p>
+        </section>
       </section>
 
       <section className="instructions-section" aria-labelledby="guide-results">

@@ -50,6 +50,134 @@ point.
 The simulator displays the result returned by its merge service. It does not
 automatically resolve conflicts for you.
 
+## Example scenarios
+
+The examples below use the simulator's actual merge engine. The non-conflicting
+example inserts code at two different locations; adding both functions at the
+same end-of-file position would be treated as overlapping insertions by this
+engine.
+
+### Non-conflicting merge
+
+Branch A adds a `welcome` function between the existing functions. Branch B
+adds a `goodbye` function after the existing code. These changes use separate
+insertion points, so neither overwrites the other.
+
+Base:
+
+```javascript
+function greet() {
+    console.log("Hello");
+}
+
+function status() {
+    console.log("Ready");
+}
+```
+
+Branch A:
+
+```javascript
+function greet() {
+    console.log("Hello");
+}
+
+function welcome() {
+    console.log("Welcome");
+}
+
+function status() {
+    console.log("Ready");
+}
+```
+
+Branch B:
+
+```javascript
+function greet() {
+    console.log("Hello");
+}
+
+function status() {
+    console.log("Ready");
+}
+
+function goodbye() {
+    console.log("Goodbye");
+}
+```
+
+The merge engine reports **Merge completed successfully** and returns:
+
+```javascript
+function greet() {
+    console.log("Hello");
+}
+
+function welcome() {
+    console.log("Welcome");
+}
+
+function status() {
+    console.log("Ready");
+}
+
+function goodbye() {
+    console.log("Goodbye");
+}
+```
+
+Both additions appear in the merged code, with no conflict reported.
+
+### Conflicting merge
+
+Both branches change the same original line to different text.
+
+Base:
+
+```javascript
+function greet() {
+    console.log("Hello");
+}
+```
+
+Branch A:
+
+```javascript
+function greet() {
+       console.log("Hello from Branch A");
+}
+```
+
+Branch B:
+
+```javascript
+function greet() {
+     console.log("Hello from Branch B");
+}
+```
+
+The merge engine reports **Merge completed with 1 conflict(s)**. The actual merged code is:
+
+<pre><code>function greet() {
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; BRANCH A
+&#32;&#32;&#32;&#32;console.log("Hello from Branch A");
+&#61;======
+&#32;&#32;&#32;&#32;console.log("Hello from Branch B");
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; BRANCH B
+}</code></pre>
+
+The simulator displays **1 conflict detected** and identifies the changed
+line as line 2. The markers mean:
+
+- `<<<<<<< BRANCH A` begins the Branch A version.
+- `=======` separates Branch A from Branch B.
+- `>>>>>>> BRANCH B` ends the conflict after the Branch B version.
+
+The conflict details also show both branch texts and the Base line. These
+markers are illustrative output from the existing merge engine; a developer
+must review the alternatives and decide what the final code should contain.
+
 ## Understanding merge results
 
 ### Successful merge
