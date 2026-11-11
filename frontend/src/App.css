@@ -48,6 +48,35 @@ body {
   line-height: 1.6;
 }
 
+.view-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.view-navigation button {
+  padding: 10px 16px;
+  border: 1px solid #d8deea;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.view-navigation button[aria-current="page"] {
+  border-color: #6254d9;
+  background: #6254d9;
+  color: #ffffff;
+}
+
+.view-navigation button:focus-visible {
+  outline: 2px solid #8b80f9;
+  outline-offset: 3px;
+}
+
 .editor-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -380,6 +409,17 @@ body {
 
   .actions .clear-button:hover {
     background: #46495b;
+  }
+
+  .view-navigation button {
+    border-color: #414353;
+    background: #1f2028;
+    color: #f3f4f6;
+  }
+
+  .view-navigation button[aria-current="page"] {
+    border-color: #8b80f9;
+    background: #6254d9;
   }
 }
 

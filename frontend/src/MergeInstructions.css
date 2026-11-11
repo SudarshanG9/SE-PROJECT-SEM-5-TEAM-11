@@ -1,0 +1,142 @@
+.instructions-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 28px;
+  border: 1px solid #e2e6ef;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(25, 35, 65, 0.04);
+}
+
+.instructions-header {
+  padding-bottom: 22px;
+  border-bottom: 1px solid #e2e6ef;
+}
+
+.instructions-header h2 {
+  margin: 8px 0;
+  color: #172033;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.25;
+}
+
+.instructions-header > p:last-child,
+.instructions-section p,
+.version-list dd,
+.guide-faq dd {
+  color: #667085;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.instructions-section {
+  padding-top: 24px;
+}
+
+.instructions-section h3 {
+  margin: 0 0 12px;
+  color: #172033;
+  font-size: 20px;
+}
+
+.version-list,
+.guide-faq {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.version-list > div,
+.guide-faq > div,
+.result-types > div {
+  padding: 16px;
+  border: 1px solid #e2e6ef;
+  border-radius: 10px;
+  background: #fafbfe;
+}
+
+.version-list dt,
+.guide-faq dt {
+  margin-bottom: 5px;
+  color: #172033;
+  font-weight: 700;
+}
+
+.version-list dd,
+.guide-faq dd {
+  margin: 0;
+}
+
+.instructions-steps {
+  display: grid;
+  gap: 10px;
+  padding-left: 24px;
+  color: #344054;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.result-types {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.result-types h4 {
+  margin: 0 0 8px;
+  color: #172033;
+  font-size: 16px;
+}
+
+.result-types p {
+  margin: 0;
+}
+
+.guide-faq {
+  margin-bottom: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .instructions-page {
+    border-color: #373947;
+    background: #1f2028;
+  }
+
+  .instructions-header {
+    border-color: #373947;
+  }
+
+  .instructions-header h2,
+  .instructions-section h3,
+  .version-list dt,
+  .guide-faq dt,
+  .result-types h4 {
+    color: #f3f4f6;
+  }
+
+  .instructions-header > p:last-child,
+  .instructions-section p,
+  .version-list dd,
+  .guide-faq dd,
+  .instructions-steps {
+    color: #b0b7c5;
+  }
+
+  .version-list > div,
+  .guide-faq > div,
+  .result-types > div {
+    border-color: #373947;
+    background: #16171d;
+  }
+}
+
+@media (max-width: 640px) {
+  .instructions-page {
+    padding: 20px 16px;
+  }
+
+  .result-types {
+    grid-template-columns: 1fr;
+  }
+}
