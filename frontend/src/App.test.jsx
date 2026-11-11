@@ -23,6 +23,21 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Clear All' })).toBeInTheDocument()
   })
 
+  it('opens the user guide and preserves simulator code when returning', () => {
+    const { container } = render(<App />)
+    const baseInput = screen.getByLabelText('Base')
+    fireEvent.change(baseInput, { target: { value: 'function retained() {}' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'User Guide' }))
+    expect(screen.getByRole('heading', { name: 'How to use the merge simulator' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'User Guide' })).toHaveAttribute('aria-current', 'page')
+    expect(baseInput).toHaveValue('function retained() {}')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Merge Simulator' }))
+    expect(screen.getByLabelText('Base')).toBeVisible()
+    expect(container.querySelector('#base')).toHaveValue('function retained() {}')
+  })
+
   it('submits merge request and displays merged output', async () => {
     fetch.mockResolvedValueOnce({
       ok: true,
