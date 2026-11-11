@@ -1,37 +1,77 @@
 import { useState } from 'react'
+import CodeVersionInput from './CodeVersionInput'
 import './App.css'
 
 const API_URL = '/api/merge'
 
 function App() {
-  const [base, setBase] = useState('')
-  const [branchA, setBranchA] = useState('')
-  const [branchB, setBranchB] = useState('')
+  const [codeVersions, setCodeVersions] = useState({
+    base: '',
+    branchA: '',
+    branchB: '',
+  })
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  function updateCodeVersion(version, value) {
+    setCodeVersions((currentVersions) => ({
+      ...currentVersions,
+      [version]: value,
+    }))
+  }
+
   async function handleMerge() {
     setError(null)
     setResult(null)
+
+    if (Object.values(codeVersions).some((code) => !code.trim())) {
+      setError(
+        'Enter code in Base Version, Branch A Version, and Branch B Version before simulating a merge.'
+      )
+      return
+    }
+
     setLoading(true)
 
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base, branchA, branchB }),
+        body: JSON.stringify(codeVersions),
       })
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch {
+        setError('The merge service returned an invalid response. Please try again.')
+        return
+      }
 
       if (!response.ok) {
-        setError(data.error || `Server error: ${response.status}`)
+        setError(
+          typeof data?.error === 'string'
+            ? data.error
+            : `Server error: ${response.status}`
+        )
+        return
+      }
+
+      if (
+        !data ||
+        typeof data !== 'object' ||
+        typeof data.mergedCode !== 'string' ||
+        typeof data.hasConflict !== 'boolean' ||
+        typeof data.message !== 'string' ||
+        !Array.isArray(data.conflicts)
+      ) {
+        setError('The merge service returned an incomplete result. Please try again.')
         return
       }
 
       setResult(data)
-    } catch (err) {
+    } catch {
       setError('Could not reach the backend. Make sure the server is running on port 3000.')
     } finally {
       setLoading(false)
@@ -39,9 +79,7 @@ function App() {
   }
 
   function handleClear() {
-    setBase('')
-    setBranchA('')
-    setBranchB('')
+    setCodeVersions({ base: '', branchA: '', branchB: '' })
     setResult(null)
     setError(null)
   }
@@ -56,40 +94,34 @@ function App() {
         </p>
       </header>
 
-      <section className="editor-grid">
-        <div className="editor-card">
-          <label htmlFor="base">Base</label>
-          <p className="editor-description">The original version</p>
-          <textarea
+      <section aria-labelledby="code-versions-heading">
+        <h2 className="editor-section-title" id="code-versions-heading">
+          Enter Code Versions
+        </h2>
+        <div className="editor-grid">
+          <CodeVersionInput
             id="base"
-            value={base}
-            onChange={(e) => setBase(e.target.value)}
+            label="Base Version"
+            description="The original source code before branching."
+            value={codeVersions.base}
+            onChange={(value) => updateCodeVersion('base', value)}
             placeholder="Enter base code here..."
-            spellCheck="false"
           />
-        </div>
-
-        <div className="editor-card">
-          <label htmlFor="branch-a">Branch A</label>
-          <p className="editor-description">First set of changes</p>
-          <textarea
+          <CodeVersionInput
             id="branch-a"
-            value={branchA}
-            onChange={(e) => setBranchA(e.target.value)}
+            label="Branch A Version"
+            description="Contains the first branch's modifications."
+            value={codeVersions.branchA}
+            onChange={(value) => updateCodeVersion('branchA', value)}
             placeholder="Enter Branch A code here..."
-            spellCheck="false"
           />
-        </div>
-
-        <div className="editor-card">
-          <label htmlFor="branch-b">Branch B</label>
-          <p className="editor-description">Second set of changes</p>
-          <textarea
+          <CodeVersionInput
             id="branch-b"
-            value={branchB}
-            onChange={(e) => setBranchB(e.target.value)}
+            label="Branch B Version"
+            description="Contains the second branch's modifications."
+            value={codeVersions.branchB}
+            onChange={(value) => updateCodeVersion('branchB', value)}
             placeholder="Enter Branch B code here..."
-            spellCheck="false"
           />
         </div>
       </section>

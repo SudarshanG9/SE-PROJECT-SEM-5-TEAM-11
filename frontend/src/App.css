@@ -55,6 +55,12 @@ body {
   width: 100%;
 }
 
+.editor-section-title {
+  margin: 0 0 16px;
+  color: #172033;
+  font-size: 20px;
+}
+
 .editor-card,
 .result-card {
   padding: 22px;
@@ -349,7 +355,8 @@ body {
   }
 
   .editor-card label,
-  .result-card h2 {
+  .result-card h2,
+  .editor-section-title {
     color: #f3f4f6;
   }
 
