@@ -24,6 +24,14 @@ function App() {
   async function handleMerge() {
     setError(null)
     setResult(null)
+
+    if (Object.values(codeVersions).some((code) => !code.trim())) {
+      setError(
+        'Enter code in Base Version, Branch A Version, and Branch B Version before simulating a merge.'
+      )
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -33,15 +41,37 @@ function App() {
         body: JSON.stringify(codeVersions),
       })
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch {
+        setError('The merge service returned an invalid response. Please try again.')
+        return
+      }
 
       if (!response.ok) {
-        setError(data.error || `Server error: ${response.status}`)
+        setError(
+          typeof data?.error === 'string'
+            ? data.error
+            : `Server error: ${response.status}`
+        )
+        return
+      }
+
+      if (
+        !data ||
+        typeof data !== 'object' ||
+        typeof data.mergedCode !== 'string' ||
+        typeof data.hasConflict !== 'boolean' ||
+        typeof data.message !== 'string' ||
+        !Array.isArray(data.conflicts)
+      ) {
+        setError('The merge service returned an incomplete result. Please try again.')
         return
       }
 
       setResult(data)
-    } catch (err) {
+    } catch {
       setError('Could not reach the backend. Make sure the server is running on port 3000.')
     } finally {
       setLoading(false)
