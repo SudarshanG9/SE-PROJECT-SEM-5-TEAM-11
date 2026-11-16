@@ -4,8 +4,10 @@ import '@testing-library/jest-dom/vitest'
 import App from './App'
 
 describe('App', () => {
+ 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
+     localStorage.clear()
   })
 
   afterEach(() => {
@@ -221,4 +223,160 @@ describe('App', () => {
       'The merge service returned an invalid response.'
     )
   })
+  it('persists the user session after successful login', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      token: 'test-session-token',
+      user: {
+        id: '123',
+        name: 'Test User',
+        email: 'test@example.com',
+        role: 'contributor',
+      },
+    }),
+  })
+
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+
+  fireEvent.change(screen.getByLabelText('Email Address'), {
+    target: { value: 'test@example.com' },
+  })
+
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'Password123' },
+  })
+
+  fireEvent.click(screen.getByRole('button', { name: 'Log In' }))
+
+  expect(await screen.findByText(/Logged in as/)).toBeInTheDocument()
+
+  const storedSession = JSON.parse(
+    localStorage.getItem('codeMergeSimulatorSession')
+  )
+
+  expect(storedSession.token).toBe('test-session-token')
+  expect(storedSession.user.name).toBe('Test User')
+})
+
+it('restores the user session after application reload', () => {
+  localStorage.setItem(
+    'codeMergeSimulatorSession',
+    JSON.stringify({
+      token: 'saved-session-token',
+      user: {
+        id: '123',
+        name: 'Saved User',
+        email: 'saved@example.com',
+        role: 'contributor',
+      },
+    })
+  )
+
+  render(<App />)
+
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'Logged in as Saved User'
+  )
+})
+
+it('logs out and clears the persisted session', async () => {
+  localStorage.setItem(
+    'codeMergeSimulatorSession',
+    JSON.stringify({
+      token: 'test-session-token',
+      user: {
+        id: '123',
+        name: 'Test User',
+        email: 'test@example.com',
+        role: 'contributor',
+      },
+    })
+  )
+
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      message: 'Logout successful.',
+    }),
+  })
+
+  render(<App />)
+
+  expect(screen.getByText(/Logged in as/)).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Log Out' }))
+
+  await waitFor(() => {
+    expect(fetch).toHaveBeenCalledWith('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-session-token',
+      },
+    })
+  })
+
+  await waitFor(() => {
+    expect(localStorage.getItem('codeMergeSimulatorSession')).toBeNull()
+  })
+
+  expect(screen.queryByText(/Logged in as/)).not.toBeInTheDocument()
+})
+
+it('sends the saved authentication token with merge requests', async () => {
+  localStorage.setItem(
+    'codeMergeSimulatorSession',
+    JSON.stringify({
+      token: 'saved-session-token',
+      user: {
+        id: '123',
+        name: 'Saved User',
+        email: 'saved@example.com',
+        role: 'contributor',
+      },
+    })
+  )
+
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      mergedCode: 'const value = 2;',
+      hasConflict: false,
+      message: 'Merge completed successfully',
+      conflicts: [],
+    }),
+  })
+
+  render(<App />)
+
+  fireEvent.change(screen.getByLabelText('Base Version'), {
+    target: { value: 'const value = 1;' },
+  })
+  fireEvent.change(screen.getByLabelText('Branch A Version'), {
+    target: { value: 'const value = 2;' },
+  })
+  fireEvent.change(screen.getByLabelText('Branch B Version'), {
+    target: { value: 'const value = 3;' },
+  })
+
+  fireEvent.click(screen.getByRole('button', { name: 'Simulate Merge' }))
+
+  await waitFor(() => {
+    expect(fetch).toHaveBeenCalledWith('/api/merge', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer saved-session-token',
+      },
+      body: JSON.stringify({
+        base: 'const value = 1;',
+        branchA: 'const value = 2;',
+        branchB: 'const value = 3;',
+      }),
+    })
+  })
+})
+
 })

@@ -1,20 +1,90 @@
 import { useState } from 'react'
 import CodeVersionInput from './CodeVersionInput'
 import MergeInstructions from './MergeInstructions'
+import AuthPanel from './AuthPanel'
 import './App.css'
 
+
 const API_URL = '/api/merge'
+const SESSION_STORAGE_KEY = 'codeMergeSimulatorSession'
+
+function getStoredSession() {
+  try {
+    const storedSession = localStorage.getItem(SESSION_STORAGE_KEY)
+
+    if (!storedSession) {
+      return null
+    }
+
+    const session = JSON.parse(storedSession)
+
+    if (!session?.token || !session?.user) {
+      localStorage.removeItem(SESSION_STORAGE_KEY)
+      return null
+    }
+
+    return session
+  } catch {
+    localStorage.removeItem(SESSION_STORAGE_KEY)
+    return null
+  }
+}
+
 
 function App() {
   const [view, setView] = useState('simulator')
+  const [session, setSession] = useState(getStoredSession)
+
+  const currentUser = session?.user || null
+
   const [codeVersions, setCodeVersions] = useState({
     base: '',
     branchA: '',
     branchB: '',
   })
+
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  function handleLoginSuccess(user, token) {
+    const newSession = {
+      user,
+      token,
+    }
+
+    localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify(newSession)
+    )
+
+    setSession(newSession)
+    setView('simulator')
+  }
+
+async function handleLogout() {
+  try {
+    if (session?.token) {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Logout request failed.')
+      }
+    }
+  } catch {
+    setError('Could not contact the server. Your local session was cleared.')
+  } finally {
+    localStorage.removeItem(SESSION_STORAGE_KEY)
+    setSession(null)
+    setView('simulator')
+  }
+}
+
 
   function updateCodeVersion(version, value) {
     setCodeVersions((currentVersions) => ({
@@ -37,11 +107,16 @@ function App() {
     setLoading(true)
 
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(codeVersions),
-      })
+     const response = await fetch(API_URL, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    ...(session?.token
+      ? { Authorization: `Bearer ${session.token}` }
+      : {}),
+  },
+  body: JSON.stringify(codeVersions),
+})
 
       let data
       try {
@@ -95,8 +170,27 @@ function App() {
           Compare your base code with two branches and simulate a merge.
         </p>
       </header>
+     {currentUser && (
+  <div className="user-welcome">
+    <p role="status">
+      Logged in as <strong>{currentUser.name}</strong>
+      {' '}({currentUser.role})
+    </p>
+
+    <button type="button" onClick={handleLogout}>
+      Log Out
+    </button>
+  </div>
+)}
 
       <nav className="view-navigation" aria-label="Main navigation">
+        <button
+  type="button"
+  aria-current={view === 'auth' ? 'page' : undefined}
+  onClick={() => setView('auth')}
+>
+  Account
+</button>
         <button
           type="button"
           aria-current={view === 'simulator' ? 'page' : undefined}
@@ -112,6 +206,9 @@ function App() {
           User Guide
         </button>
       </nav>
+      {view === 'auth' && (
+  <AuthPanel onLoginSuccess={handleLoginSuccess} />
+)}
 
       {view === 'guide' && <MergeInstructions />}
       <div hidden={view !== 'simulator'}>
@@ -220,5 +317,6 @@ function App() {
     </main>
   )
 }
+
 
 export default App
