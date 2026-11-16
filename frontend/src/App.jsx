@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import CodeVersionInput from './CodeVersionInput'
+import MergeInstructions from './MergeInstructions'
 import './App.css'
 
 const API_URL = '/api/merge'
 
 function App() {
+  const [view, setView] = useState('simulator')
   const [codeVersions, setCodeVersions] = useState({
     base: '',
     branchA: '',
@@ -94,107 +96,127 @@ function App() {
         </p>
       </header>
 
-      <section aria-labelledby="code-versions-heading">
-        <h2 className="editor-section-title" id="code-versions-heading">
-          Enter Code Versions
-        </h2>
-        <div className="editor-grid">
-          <CodeVersionInput
-            id="base"
-            label="Base Version"
-            description="The original source code before branching."
-            value={codeVersions.base}
-            onChange={(value) => updateCodeVersion('base', value)}
-            placeholder="Enter base code here..."
-          />
-          <CodeVersionInput
-            id="branch-a"
-            label="Branch A Version"
-            description="Contains the first branch's modifications."
-            value={codeVersions.branchA}
-            onChange={(value) => updateCodeVersion('branchA', value)}
-            placeholder="Enter Branch A code here..."
-          />
-          <CodeVersionInput
-            id="branch-b"
-            label="Branch B Version"
-            description="Contains the second branch's modifications."
-            value={codeVersions.branchB}
-            onChange={(value) => updateCodeVersion('branchB', value)}
-            placeholder="Enter Branch B code here..."
-          />
-        </div>
-      </section>
-
-      <div className="actions">
-        <button type="button" onClick={handleMerge} disabled={loading}>
-          {loading ? 'Merging…' : 'Simulate Merge'}
-        </button>
-
+      <nav className="view-navigation" aria-label="Main navigation">
         <button
           type="button"
-          className="clear-button"
-          onClick={handleClear}
-          disabled={loading}
+          aria-current={view === 'simulator' ? 'page' : undefined}
+          onClick={() => setView('simulator')}
         >
-          Clear All
+          Merge Simulator
         </button>
-      </div>
+        <button
+          type="button"
+          aria-current={view === 'guide' ? 'page' : undefined}
+          onClick={() => setView('guide')}
+        >
+          User Guide
+        </button>
+      </nav>
 
-      {error && (
-        <div className="error-banner" role="alert">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {result && (
-        <section className="result-card" aria-live="polite">
-          <div className="result-header">
-            <h2>Merge Result</h2>
-            <span className={`status-badge ${result.hasConflict ? 'conflict' : 'success'}`}>
-              {result.hasConflict
-                ? `⚠ ${result.conflicts.length} conflict${result.conflicts.length !== 1 ? 's' : ''} detected`
-                : '✓ Merged successfully'}
-            </span>
+      {view === 'guide' && <MergeInstructions />}
+      <div hidden={view !== 'simulator'}>
+        <section aria-labelledby="code-versions-heading">
+          <h2 className="editor-section-title" id="code-versions-heading">
+            Enter Code Versions
+          </h2>
+          <div className="editor-grid">
+            <CodeVersionInput
+              id="base"
+              label="Base Version"
+              description="The original source code before branching."
+              value={codeVersions.base}
+              onChange={(value) => updateCodeVersion('base', value)}
+              placeholder="Enter base code here..."
+            />
+            <CodeVersionInput
+              id="branch-a"
+              label="Branch A Version"
+              description="Contains the first branch's modifications."
+              value={codeVersions.branchA}
+              onChange={(value) => updateCodeVersion('branchA', value)}
+              placeholder="Enter Branch A code here..."
+            />
+            <CodeVersionInput
+              id="branch-b"
+              label="Branch B Version"
+              description="Contains the second branch's modifications."
+              value={codeVersions.branchB}
+              onChange={(value) => updateCodeVersion('branchB', value)}
+              placeholder="Enter Branch B code here..."
+            />
           </div>
-
-          <p className="result-message">{result.message}</p>
-
-          <h3 className="section-label">Merged Code</h3>
-          <pre className="code-block">{result.mergedCode}</pre>
-
-          {result.hasConflict && result.conflicts.length > 0 && (
-            <div className="conflicts-section">
-              <h3 className="section-label">
-                Conflict Details ({result.conflicts.length})
-              </h3>
-              {result.conflicts.map((conflict) => (
-                <div key={conflict.id} className="conflict-block">
-                  <p className="conflict-meta">
-                    Conflict #{conflict.id} — lines {conflict.startLine}–{conflict.endLine}
-                  </p>
-                  <div className="conflict-sides">
-                    <div className="conflict-side side-a">
-                      <p className="side-label">Branch A</p>
-                      <pre>{conflict.branchA}</pre>
-                    </div>
-                    <div className="conflict-side side-b">
-                      <p className="side-label">Branch B</p>
-                      <pre>{conflict.branchB}</pre>
-                    </div>
-                  </div>
-                  {conflict.base && (
-                    <details className="conflict-base">
-                      <summary>Base (common ancestor)</summary>
-                      <pre>{conflict.base}</pre>
-                    </details>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </section>
-      )}
+
+        <div className="actions">
+          <button type="button" onClick={handleMerge} disabled={loading}>
+            {loading ? 'Merging…' : 'Simulate Merge'}
+          </button>
+
+          <button
+            type="button"
+            className="clear-button"
+            onClick={handleClear}
+            disabled={loading}
+          >
+            Clear All
+          </button>
+        </div>
+
+        {error && (
+          <div className="error-banner" role="alert">
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+
+        {result && (
+          <section className="result-card" aria-live="polite">
+            <div className="result-header">
+              <h2>Merge Result</h2>
+              <span className={`status-badge ${result.hasConflict ? 'conflict' : 'success'}`}>
+                {result.hasConflict
+                  ? `⚠ ${result.conflicts.length} conflict${result.conflicts.length !== 1 ? 's' : ''} detected`
+                  : '✓ Merged successfully'}
+              </span>
+            </div>
+
+            <p className="result-message">{result.message}</p>
+
+            <h3 className="section-label">Merged Code</h3>
+            <pre className="code-block">{result.mergedCode}</pre>
+
+            {result.hasConflict && result.conflicts.length > 0 && (
+              <div className="conflicts-section">
+                <h3 className="section-label">
+                  Conflict Details ({result.conflicts.length})
+                </h3>
+                {result.conflicts.map((conflict) => (
+                  <div key={conflict.id} className="conflict-block">
+                    <p className="conflict-meta">
+                      Conflict #{conflict.id} — lines {conflict.startLine}–{conflict.endLine}
+                    </p>
+                    <div className="conflict-sides">
+                      <div className="conflict-side side-a">
+                        <p className="side-label">Branch A</p>
+                        <pre>{conflict.branchA}</pre>
+                      </div>
+                      <div className="conflict-side side-b">
+                        <p className="side-label">Branch B</p>
+                        <pre>{conflict.branchB}</pre>
+                      </div>
+                    </div>
+                    {conflict.base && (
+                      <details className="conflict-base">
+                        <summary>Base (common ancestor)</summary>
+                        <pre>{conflict.base}</pre>
+                      </details>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
     </main>
   )
 }

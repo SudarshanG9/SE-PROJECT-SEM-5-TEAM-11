@@ -76,6 +76,21 @@ describe('App', () => {
     expect(screen.getByLabelText('Branch B Version')).toHaveValue('')
   })
 
+  it('opens the user guide and preserves simulator code when returning', () => {
+    render(<App />)
+    const baseInput = screen.getByLabelText('Base Version')
+    fireEvent.change(baseInput, { target: { value: 'function retained() {}' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'User Guide' }))
+    expect(screen.getByRole('heading', { name: 'How to use the merge simulator' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'User Guide' })).toHaveAttribute('aria-current', 'page')
+    expect(baseInput).toHaveValue('function retained() {}')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Merge Simulator' }))
+    expect(baseInput).toBeVisible()
+    expect(baseInput).toHaveValue('function retained() {}')
+  })
+
   it('submits merge request and displays merged output', async () => {
     fetch.mockResolvedValueOnce({
       ok: true,
