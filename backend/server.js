@@ -18,7 +18,13 @@ const {
   clearFiles,
 } = require("./files");
 const { authenticate, authorize } = require("./rbac/middleware");
-const { listUsers } = require("./rbac/users");
+const {
+  listUsers,
+  hashPassword,
+  createRegisteredUser,
+} = require("./rbac/users");
+
+const crypto = require("crypto");
 
 const MAX_FILE_CONTENT_BYTES = 1024 * 1024;
 
@@ -701,6 +707,81 @@ app.use((error, req, res, next) => {
     error: "Unable to merge these inputs. Please try again.",
   });
 });
+
+
+/**
+ * POST /api/auth/register
+ *
+ * Registers a new user with a securely hashed password.
+ */
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body || {};
+
+    // Validate name
+    if (
+      typeof name !== "string" ||
+      !name.trim()
+    ) {
+      return res.status(400).json({
+        error: "A valid name is required.",
+      });
+    }
+
+    // Validate email
+    if (
+      typeof email !== "string" ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+    ) {
+      return res.status(400).json({
+        error: "A valid email address is required.",
+      });
+    }
+
+    // Validate password
+    if (
+      typeof password !== "string" ||
+      password.length < 8
+    ) {
+      return res.status(400).json({
+        error: "Password must contain at least 8 characters.",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const passwordHash = await hashPassword(password);
+
+    const user = createRegisteredUser({
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      email: normalizedEmail,
+      passwordHash,
+    });
+
+    return res.status(201).json({
+      message: "Registration successful.",
+      user,
+    });
+  } catch (error) {
+    // Handle duplicate email addresses.
+    if (
+      error.code === "SQLITE_CONSTRAINT_UNIQUE" ||
+      error.code === "SQLITE_CONSTRAINT_PRIMARYKEY"
+    ) {
+      return res.status(409).json({
+        error: "An account with this email already exists.",
+      });
+    }
+
+    console.error("Registration error:", error.message);
+
+    return res.status(500).json({
+      error: "Unable to register user. Please try again.",
+    });
+  }
+});
+
 
 /**
  * GET /api/users

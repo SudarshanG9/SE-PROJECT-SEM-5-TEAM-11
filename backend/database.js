@@ -91,6 +91,27 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tokens_userId
     ON tokens(userId);
 `);
+// Upgrade existing users table to support registration.
+const userColumns = db
+  .prepare("PRAGMA table_info(users)")
+  .all()
+  .map((column) => column.name);
+
+if (!userColumns.includes("email")) {
+  db.exec("ALTER TABLE users ADD COLUMN email TEXT");
+}
+
+if (!userColumns.includes("passwordHash")) {
+  db.exec("ALTER TABLE users ADD COLUMN passwordHash TEXT");
+}
+
+// Emails must be unique, ignoring letter case.
+// Existing seeded users can keep NULL emails.
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique
+  ON users(LOWER(email))
+  WHERE email IS NOT NULL
+`);
 const repositoryColumns = db
     .prepare("PRAGMA table_info(repositories)")
     .all()
