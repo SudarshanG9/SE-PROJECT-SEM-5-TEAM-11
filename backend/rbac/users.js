@@ -160,7 +160,42 @@ function deleteUser(id) {
 
   return result.changes > 0;
 }
+/**
+ * Find a user by normalized email.
+ */
+function getUserByEmail(email) {
+  return db.prepare(`
+    SELECT id, name, email, role, passwordHash
+    FROM users
+    WHERE LOWER(email) = LOWER(?)
+  `).get(email) ?? null;
+}
 
+/**
+ * Create a secure authentication token.
+ */
+function createToken(userId) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    INSERT INTO tokens (token, userId, createdAt)
+    VALUES (?, ?, ?)
+  `).run(token, userId, now);
+
+  return token;
+}
+
+/**
+ * Invalidate an authentication token.
+ */
+function deleteToken(token) {
+  const result = db.prepare(
+    "DELETE FROM tokens WHERE token = ?"
+  ).run(token);
+
+  return result.changes > 0;
+}
 module.exports = {
   getUserByToken,
   listUsers,
@@ -169,4 +204,7 @@ module.exports = {
   hashPassword,
   verifyPassword,
   createRegisteredUser,
+  getUserByEmail,
+  createToken,
+  deleteToken,
 };

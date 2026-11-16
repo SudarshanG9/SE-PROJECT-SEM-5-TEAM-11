@@ -22,8 +22,11 @@ const {
   listUsers,
   hashPassword,
   createRegisteredUser,
+  getUserByEmail,
+  verifyPassword,
+  createToken,
+  deleteToken,
 } = require("./rbac/users");
-
 const crypto = require("crypto");
 
 const MAX_FILE_CONTENT_BYTES = 1024 * 1024;
@@ -747,6 +750,69 @@ app.post("/api/auth/register", async (req, res) => {
         error: "Password must contain at least 8 characters.",
       });
     }
+
+    // POST /api/auth/login
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password
+    ) {
+      return res.status(400).json({
+        error: "Email and password are required.",
+      });
+    }
+
+    const user = getUserByEmail(email.trim().toLowerCase());
+
+    if (
+      !user ||
+      !user.passwordHash ||
+      !(await verifyPassword(password, user.passwordHash))
+    ) {
+      return res.status(401).json({
+        error: "Invalid email or password.",
+      });
+    }
+
+    const token = createToken(user.id);
+
+    return res.status(200).json({
+      message: "Login successful.",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Login error:", error.message);
+
+    return res.status(500).json({
+      error: "Unable to log in. Please try again.",
+    });
+  }
+});
+// POST /api/auth/logout
+app.post(
+  "/api/auth/logout",
+  authenticate,
+  (req, res) => {
+    const token = req.headers.authorization.slice(7);
+
+    deleteToken(token);
+
+    return res.status(200).json({
+      message: "Logout successful.",
+    });
+  }
+);
 
     const normalizedEmail = email.trim().toLowerCase();
 

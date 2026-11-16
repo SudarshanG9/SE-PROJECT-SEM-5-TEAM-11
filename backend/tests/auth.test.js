@@ -174,3 +174,111 @@ describe("User registration API", () => {
     expect(alice.role).toBe("owner");
   });
 });
+describe("Login and logout API", () => {
+  let email;
+  let token;
+
+  afterEach(() => {
+    if (email) {
+      db.prepare("DELETE FROM users WHERE email = ?").run(email);
+    }
+
+    email = null;
+    token = null;
+  });
+
+  async function registerAndLogin() {
+    email = `login-${crypto.randomUUID()}@example.com`;
+
+    await request(app)
+      .post("/api/auth/register")
+      .send({
+        name: "Login Tester",
+        email,
+        password: "SecurePassword123",
+      });
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({
+        email,
+        password: "SecurePassword123",
+      });
+
+    token = response.body.token;
+
+    return response;
+  }
+
+  it("logs in with valid credentials", async () => {
+    const response = await registerAndLogin();
+
+    expect(response.status).toBe(200);
+    expect(response.body.token).toBeTruthy();
+    expect(response.body.user.email).toBe(email);
+    expect(response.body.user.passwordHash).toBeUndefined();
+  });
+
+  it("rejects an incorrect password", async () => {
+    email = `wrong-${crypto.randomUUID()}@example.com`;
+
+    await request(app)
+      .post("/api/auth/register")
+      .send({
+        name: "Login Tester",
+        email,
+        password: "SecurePassword123",
+      });
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({
+        email,
+        password: "WrongPassword123",
+      });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects an unknown email", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({
+        email: "unknown@example.com",
+        password: "SecurePassword123",
+      });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects missing login fields", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({});
+
+    expect(response.status).toBe(400);
+  });
+
+  it("logs out and invalidates the authentication token", async () => {
+    const loginResponse = await registerAndLogin();
+
+    expect(loginResponse.status).toBe(200);
+
+    const logoutResponse = await request(app)
+      .post("/api/auth/logout")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(logoutResponse.status).toBe(200);
+
+    expect(
+      getUserByToken(token)
+    ).toBeNull();
+  });
+
+  it("rejects logout without authentication", async () => {
+    const response = await request(app)
+      .post("/api/auth/logout");
+
+    expect(response.status).toBe(401);
+  });
+});
