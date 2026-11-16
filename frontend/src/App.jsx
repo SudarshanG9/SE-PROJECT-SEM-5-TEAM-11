@@ -1,20 +1,74 @@
 import { useState } from 'react'
 import CodeVersionInput from './CodeVersionInput'
 import MergeInstructions from './MergeInstructions'
+import AuthPanel from './AuthPanel'
 import './App.css'
 
+
 const API_URL = '/api/merge'
+const SESSION_STORAGE_KEY = 'codeMergeSimulatorSession'
+
+function getStoredSession() {
+  try {
+    const storedSession = localStorage.getItem(SESSION_STORAGE_KEY)
+
+    if (!storedSession) {
+      return null
+    }
+
+    const session = JSON.parse(storedSession)
+
+    if (!session?.token || !session?.user) {
+      localStorage.removeItem(SESSION_STORAGE_KEY)
+      return null
+    }
+
+    return session
+  } catch {
+    localStorage.removeItem(SESSION_STORAGE_KEY)
+    return null
+  }
+}
+
 
 function App() {
   const [view, setView] = useState('simulator')
+  const [session, setSession] = useState(getStoredSession)
+
+  const currentUser = session?.user || null
+
   const [codeVersions, setCodeVersions] = useState({
     base: '',
     branchA: '',
     branchB: '',
   })
+
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  function handleLoginSuccess(user, token) {
+    const newSession = {
+      user,
+      token,
+    }
+
+    localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify(newSession)
+    )
+
+    setSession(newSession)
+    setView('simulator')
+  }
+
+  function updateCodeVersion(version, value) {
+    setCodeVersions((currentVersions) => ({
+      ...currentVersions,
+      [version]: value,
+    }))
+  }
+
 
   function updateCodeVersion(version, value) {
     setCodeVersions((currentVersions) => ({
@@ -95,8 +149,21 @@ function App() {
           Compare your base code with two branches and simulate a merge.
         </p>
       </header>
+      {currentUser && (
+  <p className="user-welcome" role="status">
+    Logged in as <strong>{currentUser.name}</strong>
+    {' '}({currentUser.role})
+  </p>
+)}
 
       <nav className="view-navigation" aria-label="Main navigation">
+        <button
+  type="button"
+  aria-current={view === 'auth' ? 'page' : undefined}
+  onClick={() => setView('auth')}
+>
+  Account
+</button>
         <button
           type="button"
           aria-current={view === 'simulator' ? 'page' : undefined}
@@ -112,6 +179,9 @@ function App() {
           User Guide
         </button>
       </nav>
+      {view === 'auth' && (
+  <AuthPanel onLoginSuccess={handleLoginSuccess} />
+)}
 
       {view === 'guide' && <MergeInstructions />}
       <div hidden={view !== 'simulator'}>
@@ -220,5 +290,6 @@ function App() {
     </main>
   )
 }
+
 
 export default App

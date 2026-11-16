@@ -4,8 +4,10 @@ import '@testing-library/jest-dom/vitest'
 import App from './App'
 
 describe('App', () => {
+ 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
+     localStorage.clear()
   })
 
   afterEach(() => {
@@ -221,4 +223,62 @@ describe('App', () => {
       'The merge service returned an invalid response.'
     )
   })
+  it('persists the user session after successful login', async () => {
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      token: 'test-session-token',
+      user: {
+        id: '123',
+        name: 'Test User',
+        email: 'test@example.com',
+        role: 'contributor',
+      },
+    }),
+  })
+
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+
+  fireEvent.change(screen.getByLabelText('Email Address'), {
+    target: { value: 'test@example.com' },
+  })
+
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'Password123' },
+  })
+
+  fireEvent.click(screen.getByRole('button', { name: 'Log In' }))
+
+  expect(await screen.findByText(/Logged in as/)).toBeInTheDocument()
+
+  const storedSession = JSON.parse(
+    localStorage.getItem('codeMergeSimulatorSession')
+  )
+
+  expect(storedSession.token).toBe('test-session-token')
+  expect(storedSession.user.name).toBe('Test User')
+})
+
+it('restores the user session after application reload', () => {
+  localStorage.setItem(
+    'codeMergeSimulatorSession',
+    JSON.stringify({
+      token: 'saved-session-token',
+      user: {
+        id: '123',
+        name: 'Saved User',
+        email: 'saved@example.com',
+        role: 'contributor',
+      },
+    })
+  )
+
+  render(<App />)
+
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'Logged in as Saved User'
+  )
+})
 })
