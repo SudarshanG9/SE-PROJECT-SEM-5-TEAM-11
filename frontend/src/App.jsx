@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import MergeInstructions from './MergeInstructions'
 import './App.css'
 
 const API_URL = '/api/merge'
 
 function App() {
+  const [view, setView] = useState('simulator')
   const [base, setBase] = useState('')
   const [branchA, setBranchA] = useState('')
   const [branchB, setBranchB] = useState('')
@@ -56,6 +58,25 @@ function App() {
         </p>
       </header>
 
+      <nav className="view-navigation" aria-label="Main navigation">
+        <button
+          type="button"
+          aria-current={view === 'simulator' ? 'page' : undefined}
+          onClick={() => setView('simulator')}
+        >
+          Merge Simulator
+        </button>
+        <button
+          type="button"
+          aria-current={view === 'guide' ? 'page' : undefined}
+          onClick={() => setView('guide')}
+        >
+          User Guide
+        </button>
+      </nav>
+
+      {view === 'guide' && <MergeInstructions />}
+      <div hidden={view !== 'simulator'}>
       <section className="editor-grid">
         <div className="editor-card">
           <label htmlFor="base">Base</label>
@@ -163,6 +184,7 @@ function App() {
           )}
         </section>
       )}
+      </div>
     </main>
   )
 }
