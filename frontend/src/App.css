@@ -443,3 +443,8 @@ body {
     padding: 28px 18px;
   }
 }
+.user-welcome {
+  margin-top: 12px;
+  color: #6254d9;
+  font-size: 14px;
+}

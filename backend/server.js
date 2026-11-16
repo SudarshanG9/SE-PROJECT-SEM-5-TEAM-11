@@ -717,21 +717,22 @@ app.use((error, req, res, next) => {
  *
  * Registers a new user with a securely hashed password.
  */
+
+/**
+ * POST /api/auth/register
+ *
+ * Registers a new user with a securely hashed password.
+ */
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
 
-    // Validate name
-    if (
-      typeof name !== "string" ||
-      !name.trim()
-    ) {
+    if (typeof name !== "string" || !name.trim()) {
       return res.status(400).json({
         error: "A valid name is required.",
       });
     }
 
-    // Validate email
     if (
       typeof email !== "string" ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
@@ -741,17 +742,49 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    // Validate password
-    if (
-      typeof password !== "string" ||
-      password.length < 8
-    ) {
+    if (typeof password !== "string" || password.length < 8) {
       return res.status(400).json({
         error: "Password must contain at least 8 characters.",
       });
     }
 
-    // POST /api/auth/login
+    const normalizedEmail = email.trim().toLowerCase();
+    const passwordHash = await hashPassword(password);
+
+    const user = createRegisteredUser({
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      email: normalizedEmail,
+      passwordHash,
+    });
+
+    return res.status(201).json({
+      message: "Registration successful.",
+      user,
+    });
+  } catch (error) {
+    if (
+      error.code === "SQLITE_CONSTRAINT_UNIQUE" ||
+      error.code === "SQLITE_CONSTRAINT_PRIMARYKEY"
+    ) {
+      return res.status(409).json({
+        error: "An account with this email already exists.",
+      });
+    }
+
+    console.error("Registration error:", error.message);
+
+    return res.status(500).json({
+      error: "Unable to register user. Please try again.",
+    });
+  }
+});
+
+/**
+ * POST /api/auth/login
+ *
+ * Authenticates a registered user and creates a session token.
+ */
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body || {};
@@ -799,53 +832,20 @@ app.post("/api/auth/login", async (req, res) => {
     });
   }
 });
-// POST /api/auth/logout
-app.post(
-  "/api/auth/logout",
-  authenticate,
-  (req, res) => {
-    const token = req.headers.authorization.slice(7);
 
-    deleteToken(token);
+/**
+ * POST /api/auth/logout
+ *
+ * Invalidates the authenticated user's session token.
+ */
+app.post("/api/auth/logout", authenticate, (req, res) => {
+  const token = req.headers.authorization.slice(7);
 
-    return res.status(200).json({
-      message: "Logout successful.",
-    });
-  }
-);
+  deleteToken(token);
 
-    const normalizedEmail = email.trim().toLowerCase();
-
-    const passwordHash = await hashPassword(password);
-
-    const user = createRegisteredUser({
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      email: normalizedEmail,
-      passwordHash,
-    });
-
-    return res.status(201).json({
-      message: "Registration successful.",
-      user,
-    });
-  } catch (error) {
-    // Handle duplicate email addresses.
-    if (
-      error.code === "SQLITE_CONSTRAINT_UNIQUE" ||
-      error.code === "SQLITE_CONSTRAINT_PRIMARYKEY"
-    ) {
-      return res.status(409).json({
-        error: "An account with this email already exists.",
-      });
-    }
-
-    console.error("Registration error:", error.message);
-
-    return res.status(500).json({
-      error: "Unable to register user. Please try again.",
-    });
-  }
+  return res.status(200).json({
+    message: "Logout successful.",
+  });
 });
 
 

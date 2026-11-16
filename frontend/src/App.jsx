@@ -62,12 +62,28 @@ function App() {
     setView('simulator')
   }
 
-  function updateCodeVersion(version, value) {
-    setCodeVersions((currentVersions) => ({
-      ...currentVersions,
-      [version]: value,
-    }))
+async function handleLogout() {
+  try {
+    if (session?.token) {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Logout request failed.')
+      }
+    }
+  } catch {
+    setError('Could not contact the server. Your local session was cleared.')
+  } finally {
+    localStorage.removeItem(SESSION_STORAGE_KEY)
+    setSession(null)
+    setView('simulator')
   }
+}
 
 
   function updateCodeVersion(version, value) {
@@ -91,11 +107,16 @@ function App() {
     setLoading(true)
 
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(codeVersions),
-      })
+     const response = await fetch(API_URL, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    ...(session?.token
+      ? { Authorization: `Bearer ${session.token}` }
+      : {}),
+  },
+  body: JSON.stringify(codeVersions),
+})
 
       let data
       try {
@@ -149,11 +170,17 @@ function App() {
           Compare your base code with two branches and simulate a merge.
         </p>
       </header>
-      {currentUser && (
-  <p className="user-welcome" role="status">
-    Logged in as <strong>{currentUser.name}</strong>
-    {' '}({currentUser.role})
-  </p>
+     {currentUser && (
+  <div className="user-welcome">
+    <p role="status">
+      Logged in as <strong>{currentUser.name}</strong>
+      {' '}({currentUser.role})
+    </p>
+
+    <button type="button" onClick={handleLogout}>
+      Log Out
+    </button>
+  </div>
 )}
 
       <nav className="view-navigation" aria-label="Main navigation">
