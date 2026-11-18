@@ -1,0 +1,8 @@
+.repository-history { margin-block: 1.5rem; padding: 1rem; border: 1px solid #64748b; border-radius: 12px; }
+.history-filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; }
+.history-filters label { display: grid; gap: .4rem; flex: 1 1 10rem; }
+.history-filters input, .history-filters select { width: 100%; min-width: 0; padding: .5rem; }
+.history-events { list-style: none; padding: 0; }
+.history-events li { border-top: 1px solid #64748b; padding-block: 1rem; overflow-wrap: anywhere; }
+.history-events pre { max-height: 24rem; overflow: auto; white-space: pre-wrap; }
+.repository-history nav { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }

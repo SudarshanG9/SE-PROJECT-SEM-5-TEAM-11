@@ -323,7 +323,7 @@ function deleteBranch(repositoryId, branchId) {
 
 const createCommit = db.transaction(({
   repositoryId, branchId, message, code,
-  mergeParentCommitId = null, mergeSourceBranchId = null, mergedBy = null,
+  mergeParentCommitId = null, mergeSourceBranchId = null, mergedBy = null, authorId = null,
 }) => {
   const branch = getBranch(repositoryId, branchId);
 
@@ -353,9 +353,9 @@ const createCommit = db.transaction(({
   db.prepare(`
     INSERT INTO commits (
       id, repositoryId, branchId, message,
-      code, parentCommitId, createdAt, mergeParentCommitId, mergeSourceBranchId, mergedBy
+      code, parentCommitId, createdAt, mergeParentCommitId, mergeSourceBranchId, mergedBy, authorId
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     commit.id,
     commit.repositoryId,
@@ -366,7 +366,8 @@ const createCommit = db.transaction(({
     commit.createdAt,
     mergeParentCommitId,
     mergeSourceBranchId,
-    mergedBy
+    mergedBy,
+    authorId
   );
 
   db.prepare(`

@@ -178,6 +178,12 @@ Non-conflicting example: Base `a\nb`, A `A\nb`, B `a\nB` produces `A\nB`.
 Conflicting example: Base `a`, A `A`, B `B` requires choosing or editing a result.
 Here `\n` represents a newline, not the two literal characters.
 
+## Repository history
+
+Repository details include searchable merge and commit history, saved code
+snapshots, and repository merge previews. See [history documentation](backend/docs/history.md)
+for filters, persistence, API responses, and compatibility limits.
+
 ## API routing and deployment
 
 During `npm run dev`, Vite proxies `/api` to `http://localhost:3000`.
