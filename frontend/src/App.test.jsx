@@ -397,5 +397,33 @@ it('opens the repository management dashboard', () => {
   ).toHaveAttribute('aria-current', 'page')
 })
 
+it('opens branch merge from a signed-in repository view', async () => {
+  localStorage.setItem('codeMergeSimulatorSession', JSON.stringify({
+    token: 'test-token', user: { name: 'Maintainer', role: 'maintainer' },
+  }))
+  const repository = { id: 'merge-repo', name: 'Merge repository' }
+  fetch.mockImplementation(async (url) => ({
+    ok: true,
+    json: async () => {
+      if (url.endsWith('/branches')) {
+        return { branches: [
+          { id: 'main', name: 'main', isDefault: true },
+          { id: 'feature', name: 'feature' },
+        ] }
+      }
+      if (url.endsWith('/files')) return { files: [] }
+      if (url.endsWith('/merge-repo')) return { repository }
+      return { repositories: [repository] }
+    },
+  }))
+  render(<App />)
+  expect(screen.getByRole('button', { name: 'Branches' })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Repositories' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'View Merge repository' }))
+  fireEvent.click(await screen.findByText('Open branch merge'))
+  expect(await screen.findByRole('combobox', { name: 'Target branch' })).toHaveValue('main')
+  expect(screen.getByRole('button', { name: 'Preview merge' })).toBeDisabled()
+})
+
 
 })
