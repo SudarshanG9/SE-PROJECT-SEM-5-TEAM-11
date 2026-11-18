@@ -93,11 +93,30 @@ db.exec(`
 `);
 // Preserve existing commits while adding merge history metadata.
 const commitColumns = db.prepare("PRAGMA table_info(commits)").all().map(({ name }) => name);
-for (const column of ["mergeParentCommitId", "mergeSourceBranchId", "mergedBy"]) {
+for (const column of ["mergeParentCommitId", "mergeSourceBranchId", "mergedBy", "authorId"]) {
   if (!commitColumns.includes(column)) {
     db.exec(`ALTER TABLE commits ADD COLUMN ${column} TEXT`);
   }
 }
+
+// Repository merge previews are history, not finalized commits.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS merge_simulations (
+    id TEXT PRIMARY KEY,
+    repositoryId TEXT NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+    sourceBranchId TEXT NOT NULL,
+    targetBranchId TEXT NOT NULL,
+    sourceName TEXT NOT NULL,
+    targetName TEXT NOT NULL,
+    sourceHeadCommitId TEXT NOT NULL,
+    targetHeadCommitId TEXT NOT NULL,
+    actorId TEXT,
+    conflictCount INTEGER NOT NULL,
+    createdAt TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_simulations_repository
+    ON merge_simulations(repositoryId, createdAt);
+`);
 
 // Upgrade existing users table to support registration.
 const userColumns = db
