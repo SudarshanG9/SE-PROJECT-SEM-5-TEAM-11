@@ -99,6 +99,17 @@ for (const column of ["mergeParentCommitId", "mergeSourceBranchId", "mergedBy", 
   }
 }
 
+// Immutable selected-file snapshots survive working-file edits and deletion.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS commit_files (
+    commitId TEXT NOT NULL REFERENCES commits(id) ON DELETE CASCADE,
+    fileId TEXT NOT NULL,
+    name TEXT NOT NULL,
+    content TEXT NOT NULL,
+    PRIMARY KEY (commitId, fileId)
+  );
+`);
+
 // Repository merge previews are history, not finalized commits.
 db.exec(`
   CREATE TABLE IF NOT EXISTS merge_simulations (

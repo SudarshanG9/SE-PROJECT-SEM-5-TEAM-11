@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import FileManager from './FileManager'
 import RepositoryMerge from './RepositoryMerge'
 import RepositoryHistory from './RepositoryHistory'
+import CommitManager from './CommitManager'
 import './RepositoryManager.css'
 
 const API_URL = `${import.meta.env.VITE_API_URL || ''}/api/repositories`
@@ -20,6 +21,7 @@ function RepositoryManager({ session }) {
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
   const fileManagerRef = useRef(null)
+  const [historyRevision, setHistoryRevision] = useState(0)
 
   async function request(url, options = {}) {
     const response = await fetch(url, {
@@ -479,9 +481,13 @@ function RepositoryManager({ session }) {
             </details>
           )}
 
+          <CommitManager key={`commits-${selectedRepository.id}`}
+            repositoryUrl={`${API_URL}/${selectedRepository.id}`} session={session}
+            onCommitted={() => setHistoryRevision((value) => value + 1)} />
+
           <details key={`history-${selectedRepository.id}`}>
             <summary>Open merge and commit history</summary>
-            <RepositoryHistory repositoryUrl={`${API_URL}/${selectedRepository.id}`} />
+            <RepositoryHistory key={historyRevision} repositoryUrl={`${API_URL}/${selectedRepository.id}`} />
           </details>
 
           <FileManager

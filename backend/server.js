@@ -48,6 +48,7 @@ const {
   getBranches,
   getBranchById,
   getCommits,
+  getCommitDetail,
   createBranch,
   renameBranch,
   deleteBranch,
@@ -627,10 +628,20 @@ app.get("/api/repositories/:id/history/:eventId", (req, res) => {
   return res.json({ event });
 });
 
-// Create a commit on a branch
+// Read an immutable commit within its repository.
+app.get("/api/repositories/:id/commits/:commitId", (req, res) => {
+  if (!getRepositoryById(req.params.id)) {
+    return res.status(404).json({ error: "Repository not found." });
+  }
+  const commit = getCommitDetail(req.params.id, req.params.commitId);
+  if (!commit) return res.status(404).json({ error: "Commit not found." });
+  return res.json({ commit });
+});
+
+// Create a legacy code snapshot or a selected-file commit on a branch.
 app.post("/api/repositories/:id/commits", (req, res) => {
   const repositoryId = req.params.id;
-  const { branchId, message, code } = req.body || {};
+  const { branchId, message, code, fileIds, expectedHeadCommitId } = req.body || {};
 
   if (!getRepositoryById(repositoryId)) {
     return res.status(404).json({ error: "Repository not found." });
@@ -640,11 +651,21 @@ app.post("/api/repositories/:id/commits", (req, res) => {
     typeof branchId !== "string" ||
     typeof message !== "string" ||
     !message.trim() ||
-    typeof code !== "string"
+    (fileIds === undefined && typeof code !== "string")
   ) {
     return res.status(400).json({
       error: "A branch ID, non-empty message, and code string are required.",
     });
+  }
+
+  if (fileIds !== undefined && (!Array.isArray(fileIds) || fileIds.length === 0 ||
+      fileIds.length > 100 || fileIds.some((id) => typeof id !== "string" || !id.trim()) ||
+      new Set(fileIds).size !== fileIds.length || code !== undefined)) {
+    return res.status(400).json({ error: "Select 1–100 unique file IDs, without a code field." });
+  }
+  if (expectedHeadCommitId !== undefined &&
+      (typeof expectedHeadCommitId !== "string" || !expectedHeadCommitId.trim())) {
+    return res.status(400).json({ error: "Expected branch head must be a non-empty commit ID." });
   }
 
   const result = createCommit({
@@ -652,6 +673,8 @@ app.post("/api/repositories/:id/commits", (req, res) => {
     branchId,
     message,
     code,
+    fileIds,
+    expectedHeadCommitId,
     authorId: getUserByToken(req.headers.authorization?.startsWith("Bearer ")
       ? req.headers.authorization.slice(7) : null)?.id || null,
   });
@@ -659,6 +682,8 @@ app.post("/api/repositories/:id/commits", (req, res) => {
   if (!result) {
     return res.status(404).json({ error: "Branch not found." });
   }
+
+  if (result.error) return res.status(result.status).json({ error: result.error });
 
   return res.status(201).json(result);
 });

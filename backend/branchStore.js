@@ -59,6 +59,14 @@ function getCommit(repositoryId, commitId) {
   `).get(commitId, repositoryId) || null;
 }
 
+function getCommitDetail(repositoryId, commitId) {
+  const commit = getCommit(repositoryId, commitId);
+  if (!commit) return null;
+  const files = db.prepare(`SELECT fileId, name, content FROM commit_files
+    WHERE commitId = ? ORDER BY name COLLATE NOCASE, fileId`).all(commitId);
+  return { ...commit, files };
+}
+
 // Every new repository starts with a protected main branch
 // and an initial commit.
 function initializeRepository(repositoryId) {
@@ -324,11 +332,29 @@ function deleteBranch(repositoryId, branchId) {
 const createCommit = db.transaction(({
   repositoryId, branchId, message, code,
   mergeParentCommitId = null, mergeSourceBranchId = null, mergedBy = null, authorId = null,
+  fileIds, expectedHeadCommitId,
 }) => {
   const branch = getBranch(repositoryId, branchId);
 
   if (!branch) {
     return null;
+  }
+
+  if (expectedHeadCommitId !== undefined && expectedHeadCommitId !== branch.headCommitId) {
+    return { status: 409, error: "The branch changed. Refresh before saving your commit." };
+  }
+
+  const files = [];
+  if (fileIds !== undefined) {
+    const findFile = db.prepare('SELECT id AS fileId, name, content FROM files WHERE repositoryId = ? AND id = ?');
+    for (const id of fileIds) {
+      const file = findFile.get(repositoryId, id);
+      if (!file) return { status: 404, error: "A selected file was not found in this repository." };
+      files.push(file);
+    }
+    // File snapshots are supplementary; preserve the existing mergeable code
+    // snapshot rather than serializing multiple files into the merge input.
+    code = getCommit(repositoryId, branch.headCommitId).code;
   }
 
   const now = new Date().toISOString();
@@ -341,6 +367,7 @@ const createCommit = db.transaction(({
     code,
     parentCommitId: branch.headCommitId,
     createdAt: now,
+    ...(authorId && { authorId }),
     ...(mergeParentCommitId && { mergeParentCommitId, mergeSourceBranchId, mergedBy }),
   };
 
@@ -370,6 +397,10 @@ const createCommit = db.transaction(({
     authorId
   );
 
+  const insertFile = db.prepare(`INSERT INTO commit_files (commitId, fileId, name, content)
+    VALUES (?, ?, ?, ?)`);
+  for (const file of files) insertFile.run(commit.id, file.fileId, file.name, file.content);
+
   db.prepare(`
     UPDATE branches
     SET headCommitId = ?, updatedAt = ?
@@ -382,7 +413,7 @@ const createCommit = db.transaction(({
   );
 
   return {
-    commit,
+    commit: fileIds === undefined ? commit : { ...commit, files },
     branch: updatedBranch,
   };
 }).immediate;
@@ -482,6 +513,7 @@ module.exports = {
   getBranches,
   getBranchById,
   getCommits,
+  getCommitDetail,
   createBranch,
   renameBranch,
   deleteBranch,
