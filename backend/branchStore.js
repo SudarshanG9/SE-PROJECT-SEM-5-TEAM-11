@@ -1,5 +1,20 @@
 const { randomUUID } = require("node:crypto");
 const db = require("./database");
+const { mergeCode } = require("./merge");
+
+function collectAncestors(repositoryId, heads) {
+  const commits = new Map();
+  const pending = [...heads];
+  while (pending.length) {
+    const id = pending.pop();
+    if (!id || commits.has(id)) continue;
+    const commit = getCommit(repositoryId, id);
+    if (!commit) continue;
+    commits.set(id, commit);
+    pending.push(commit.parentCommitId, commit.mergeParentCommitId);
+  }
+  return commits;
+}
 
 // Convert SQLite integer values into JavaScript booleans.
 function formatBranch(branch) {
@@ -142,19 +157,7 @@ function getCommits(repositoryId, branchId = null) {
       return [];
     }
 
-    visibleCommitIds = new Set();
-    let currentCommitId = branch.headCommitId;
-
-    while (currentCommitId) {
-      const commit = getCommit(repositoryId, currentCommitId);
-
-      if (!commit || visibleCommitIds.has(currentCommitId)) {
-        break;
-      }
-
-      visibleCommitIds.add(currentCommitId);
-      currentCommitId = commit.parentCommitId;
-    }
+    visibleCommitIds = collectAncestors(repositoryId, [branch.headCommitId]);
   }
 
   const allCommits = db.prepare(`
@@ -318,7 +321,10 @@ function deleteBranch(repositoryId, branchId) {
   return { success: true };
 }
 
-function createCommit({ repositoryId, branchId, message, code }) {
+const createCommit = db.transaction(({
+  repositoryId, branchId, message, code,
+  mergeParentCommitId = null, mergeSourceBranchId = null, mergedBy = null,
+}) => {
   const branch = getBranch(repositoryId, branchId);
 
   if (!branch) {
@@ -335,6 +341,7 @@ function createCommit({ repositoryId, branchId, message, code }) {
     code,
     parentCommitId: branch.headCommitId,
     createdAt: now,
+    ...(mergeParentCommitId && { mergeParentCommitId, mergeSourceBranchId, mergedBy }),
   };
 
   const updatedBranch = {
@@ -343,42 +350,104 @@ function createCommit({ repositoryId, branchId, message, code }) {
     updatedAt: now,
   };
 
-  const commitTransaction = db.transaction(() => {
-    db.prepare(`
-      INSERT INTO commits (
-        id, repositoryId, branchId, message,
-        code, parentCommitId, createdAt
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      commit.id,
-      commit.repositoryId,
-      commit.branchId,
-      commit.message,
-      commit.code,
-      commit.parentCommitId,
-      commit.createdAt
-    );
+  db.prepare(`
+    INSERT INTO commits (
+      id, repositoryId, branchId, message,
+      code, parentCommitId, createdAt, mergeParentCommitId, mergeSourceBranchId, mergedBy
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    commit.id,
+    commit.repositoryId,
+    commit.branchId,
+    commit.message,
+    commit.code,
+    commit.parentCommitId,
+    commit.createdAt,
+    mergeParentCommitId,
+    mergeSourceBranchId,
+    mergedBy
+  );
 
-    db.prepare(`
-      UPDATE branches
-      SET headCommitId = ?, updatedAt = ?
-      WHERE id = ? AND repositoryId = ?
-    `).run(
-      commit.id,
-      now,
-      branchId,
-      repositoryId
-    );
-  });
-
-  commitTransaction();
+  db.prepare(`
+    UPDATE branches
+    SET headCommitId = ?, updatedAt = ?
+    WHERE id = ? AND repositoryId = ?
+  `).run(
+    commit.id,
+    now,
+    branchId,
+    repositoryId
+  );
 
   return {
     commit,
     branch: updatedBranch,
   };
+}).immediate;
+
+function previewMerge(repositoryId, sourceBranchId, targetBranchId) {
+  const source = getBranch(repositoryId, sourceBranchId);
+  const target = getBranch(repositoryId, targetBranchId);
+  if (!source || !target) return { status: 404, error: "Branch not found." };
+
+  const sourceHistory = collectAncestors(repositoryId, [source.headCommitId]);
+  const targetHistory = collectAncestors(repositoryId, [target.headCommitId]);
+  if (targetHistory.has(source.headCommitId)) {
+    return { status: 409, error: "The source branch is already merged into the target." };
+  }
+
+  const common = [...sourceHistory.values()].filter((commit) => targetHistory.has(commit.id));
+  // Keep only common ancestors that are not ancestors of another common commit.
+  const older = collectAncestors(
+    repositoryId, common.flatMap((commit) => [commit.parentCommitId, commit.mergeParentCommitId])
+  );
+  const bases = common.filter((commit) => !older.has(commit.id));
+  if (bases.length !== 1) {
+    return { status: 409, error: "The branches need a single common merge base." };
+  }
+
+  return {
+    source,
+    target,
+    ...mergeCode(bases[0].code, targetHistory.get(target.headCommitId).code,
+      sourceHistory.get(source.headCommitId).code),
+  };
 }
+
+const finalizeMerge = db.transaction((repositoryId, approval, userId) => {
+  const { sourceBranchId, targetBranchId, sourceHeadCommitId, targetHeadCommitId } = approval;
+  const source = getBranch(repositoryId, sourceBranchId);
+  const target = getBranch(repositoryId, targetBranchId);
+  if (!source || !target) return { status: 404, error: "Branch not found." };
+
+  const current = getCommit(repositoryId, target.headCommitId);
+  if (current?.branchId === targetBranchId && current.mergedBy === userId &&
+      current.mergeSourceBranchId === sourceBranchId &&
+      current.mergeParentCommitId === sourceHeadCommitId &&
+      current.parentCommitId === targetHeadCommitId) {
+    return { commit: current, branch: target };
+  }
+  if (source.headCommitId !== sourceHeadCommitId || target.headCommitId !== targetHeadCommitId) {
+    return { status: 409, error: "A branch changed. Preview the merge again before confirming." };
+  }
+
+  const preview = previewMerge(repositoryId, sourceBranchId, targetBranchId);
+  if (preview.error) return preview;
+  if (preview.conflicts.length) {
+    return { status: 409, error: "Resolve the branch conflicts before finalizing." };
+  }
+
+  return createCommit({
+    repositoryId,
+    branchId: targetBranchId,
+    message: `Merge ${source.name} into ${target.name}`,
+    code: preview.mergedCode,
+    mergeParentCommitId: sourceHeadCommitId,
+    mergeSourceBranchId: sourceBranchId,
+    mergedBy: userId,
+  });
+}).immediate;
 
 // Delete all branches and commits belonging to a repository.
 function deleteRepositoryBranches(repositoryId) {
@@ -416,6 +485,8 @@ module.exports = {
   renameBranch,
   deleteBranch,
   createCommit,
+  previewMerge,
+  finalizeMerge,
   deleteRepositoryBranches,
   clearBranchData,
 };

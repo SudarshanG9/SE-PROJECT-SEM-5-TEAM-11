@@ -1,11 +1,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import FileManager from './FileManager'
+import RepositoryMerge from './RepositoryMerge'
 import './RepositoryManager.css'
 
 const API_URL = `${import.meta.env.VITE_API_URL || ''}/api/repositories`
 
-function RepositoryManager() {
+function RepositoryManager({ session }) {
   const [repositories, setRepositories] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('newest')
@@ -469,6 +470,13 @@ function RepositoryManager() {
               Close details
             </button>
           </div>
+
+          {session && session.user.role !== 'viewer' && (
+            <details key={selectedRepository.id} className="repository-merge">
+              <summary>Open branch merge</summary>
+              <RepositoryMerge repositoryUrl={`${API_URL}/${selectedRepository.id}`} session={session} />
+            </details>
+          )}
 
           <FileManager
             key={selectedRepository.id}

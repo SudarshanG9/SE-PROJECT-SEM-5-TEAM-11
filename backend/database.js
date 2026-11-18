@@ -91,6 +91,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tokens_userId
     ON tokens(userId);
 `);
+// Preserve existing commits while adding merge history metadata.
+const commitColumns = db.prepare("PRAGMA table_info(commits)").all().map(({ name }) => name);
+for (const column of ["mergeParentCommitId", "mergeSourceBranchId", "mergedBy"]) {
+  if (!commitColumns.includes(column)) {
+    db.exec(`ALTER TABLE commits ADD COLUMN ${column} TEXT`);
+  }
+}
+
 // Upgrade existing users table to support registration.
 const userColumns = db
   .prepare("PRAGMA table_info(users)")
