@@ -379,4 +379,23 @@ it('sends the saved authentication token with merge requests', async () => {
   })
 })
 
+it('opens the repository management dashboard', () => {
+  render(<App />)
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Repositories' })
+  )
+
+  expect(
+    screen.getByRole('heading', {
+      name: 'Repository management',
+    })
+  ).toBeInTheDocument()
+
+  expect(
+    screen.getByRole('button', { name: 'Repositories' })
+  ).toHaveAttribute('aria-current', 'page')
+})
+
+
 })
