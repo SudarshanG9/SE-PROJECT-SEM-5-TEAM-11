@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react'
 import FileManager from './FileManager'
 import './RepositoryManager.css'
@@ -6,6 +7,8 @@ const API_URL = `${import.meta.env.VITE_API_URL || ''}/api/repositories`
 
 function RepositoryManager() {
   const [repositories, setRepositories] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [editingId, setEditingId] = useState(null)
@@ -23,13 +26,11 @@ function RepositoryManager() {
     })
 
     let data = null
+
     try {
       data = await response.json()
     } catch {
-      if (response.ok) {
-        return null
-      }
-
+      if (response.ok) return null
       throw new Error('Backend returned an invalid response.')
     }
 
@@ -46,7 +47,9 @@ function RepositoryManager() {
 
     try {
       const data = await request(API_URL)
-      setRepositories(Array.isArray(data?.repositories) ? data.repositories : [])
+      setRepositories(
+        Array.isArray(data?.repositories) ? data.repositories : []
+      )
     } catch (err) {
       setError(err.message)
     } finally {
@@ -54,11 +57,9 @@ function RepositoryManager() {
     }
   }
 
-    useEffect(() => {
-    if (import.meta.env.MODE !== 'test') {
-      loadRepositories()
-    }
-  }, [])
+  useEffect(() => {
+  loadRepositories()
+}, [])
 
   function resetForm() {
     setName('')
@@ -80,7 +81,9 @@ function RepositoryManager() {
       return
     }
 
-    if (!name.trim()) {
+    const trimmedName = name.trim()
+
+    if (!trimmedName) {
       setError('Repository name is required.')
       return
     }
@@ -88,16 +91,21 @@ function RepositoryManager() {
     setSaving(true)
 
     try {
+      const payload = {
+        name: trimmedName,
+        description: description.trim(),
+      }
+
       if (editingId) {
         await request(`${API_URL}/${editingId}`, {
           method: 'PUT',
-          body: JSON.stringify({ name, description }),
+          body: JSON.stringify(payload),
         })
         setFeedback('Repository updated successfully.')
       } else {
         await request(API_URL, {
           method: 'POST',
-          body: JSON.stringify({ name, description }),
+          body: JSON.stringify(payload),
         })
         setFeedback('Repository created successfully.')
       }
@@ -118,7 +126,7 @@ function RepositoryManager() {
     }
 
     setEditingId(repository.id)
-    setName(repository.name)
+    setName(repository.name || '')
     setDescription(repository.description || '')
     setSelectedRepository(null)
     setError('')
@@ -138,9 +146,11 @@ function RepositoryManager() {
 
     try {
       const data = await request(`${API_URL}/${repository.id}`)
+
       if (!data?.repository) {
         throw new Error('Backend returned an invalid repository response.')
       }
+
       setSelectedRepository(data.repository)
     } catch (err) {
       setError(err.message)
@@ -158,6 +168,7 @@ function RepositoryManager() {
     )
 
     if (!confirmed) return
+
     if (
       selectedRepository?.id === repository.id &&
       !(await prepareToLeaveRepository())
@@ -188,8 +199,38 @@ function RepositoryManager() {
     }
   }
 
+  const searchValue = searchTerm.trim().toLowerCase()
+
+  const filteredRepositories = repositories
+  .filter((repository) => {
+    const repositoryName = (repository.name || '').toLowerCase()
+    const repositoryDescription = (
+      repository.description || ''
+    ).toLowerCase()
+
+    return (
+      repositoryName.includes(searchValue) ||
+      repositoryDescription.includes(searchValue)
+    )
+  })
+  .sort((a, b) => {
+    if (sortBy === 'name') {
+      return (a.name || '').localeCompare(b.name || '')
+    }
+
+    const dateA = new Date(a.createdAt || 0).getTime()
+    const dateB = new Date(b.createdAt || 0).getTime()
+
+    return sortBy === 'oldest'
+      ? dateA - dateB
+      : dateB - dateA
+  })
+
   return (
-    <section className="repository-section" aria-label="Repository management">
+    <section
+      className="repository-section"
+      aria-label="Repository management"
+    >
       <div className="repository-heading">
         <div>
           <p className="section-kicker">03 / REPOSITORIES</p>
@@ -200,8 +241,37 @@ function RepositoryManager() {
         </div>
 
         <span className="repository-count">
-          {repositories.length} {repositories.length === 1 ? 'REPOSITORY' : 'REPOSITORIES'}
+          {repositories.length}{' '}
+          {repositories.length === 1 ? 'REPOSITORY' : 'REPOSITORIES'}
         </span>
+        <div className="repository-statistics">
+  <div className="repository-stat-card">
+    <span>Total repositories</span>
+    <strong>{repositories.length}</strong>
+  </div>
+
+  <div className="repository-stat-card">
+    <span>With descriptions</span>
+    <strong>
+      {
+        repositories.filter(
+          (repository) => repository.description?.trim()
+        ).length
+      }
+    </strong>
+  </div>
+
+  <div className="repository-stat-card">
+    <span>Without descriptions</span>
+    <strong>
+      {
+        repositories.filter(
+          (repository) => !repository.description?.trim()
+        ).length
+      }
+    </strong>
+  </div>
+</div>
       </div>
 
       {error && (
@@ -224,7 +294,7 @@ function RepositoryManager() {
           <input
             id="repository-name"
             value={name}
-            onChange={event => setName(event.target.value)}
+            onChange={(event) => setName(event.target.value)}
             placeholder="e.g. my-project"
             maxLength={100}
             required
@@ -234,14 +304,22 @@ function RepositoryManager() {
           <textarea
             id="repository-description"
             value={description}
-            onChange={event => setDescription(event.target.value)}
+            onChange={(event) => setDescription(event.target.value)}
             placeholder="What is this repository about?"
             rows={4}
           />
 
           <div className="repository-form-actions">
-            <button className="repository-primary-button" type="submit" disabled={saving}>
-              {saving ? 'Saving...' : editingId ? 'Save changes' : 'Create repository'}
+            <button
+              className="repository-primary-button"
+              type="submit"
+              disabled={saving}
+            >
+              {saving
+                ? 'Saving...'
+                : editingId
+                  ? 'Save changes'
+                  : 'Create repository'}
             </button>
 
             {editingId && (
@@ -260,21 +338,68 @@ function RepositoryManager() {
         <div className="repository-list-panel">
           <h3>Your repositories</h3>
 
+          <label
+            htmlFor="repository-search"
+            className="repository-search-label"
+          >
+            Search repositories
+          </label>
+
+          <input
+            id="repository-search"
+            className="repository-search-input"
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search by name or description..."
+          />
+          <label
+  htmlFor="repository-sort"
+  className="repository-search-label"
+>
+  Sort repositories
+</label>
+
+<select
+  id="repository-sort"
+  className="repository-sort-select"
+  value={sortBy}
+  onChange={(event) => setSortBy(event.target.value)}
+>
+  <option value="newest">Newest first</option>
+  <option value="oldest">Oldest first</option>
+  <option value="name">Name (A–Z)</option>
+</select>
+
           {loading ? (
-            <p className="repository-empty">Loading repositories...</p>
+            <p className="repository-empty" role="status">
+              Loading repositories...
+            </p>
           ) : repositories.length === 0 ? (
             <p className="repository-empty">
-              No repositories yet. Create your first repository using the form.
+              You haven't created any repositories yet.
+            </p>
+          ) : filteredRepositories.length === 0 ? (
+            <p className="repository-empty" role="status">
+              No repositories match your search.
             </p>
           ) : (
             <div className="repository-list">
-              {repositories.map(repository => (
-                <article className="repository-item" key={repository.id}>
+              {filteredRepositories.map((repository) => (
+                <article
+                  className="repository-item"
+                  key={repository.id}
+                >
                   <div className="repository-item-info">
                     <h4>{repository.name}</h4>
-                    <p>{repository.description || 'No description provided.'}</p>
+                    <p>
+                      {repository.description || 'No description provided.'}
+                    </p>
                     <span>
-                      Created {new Date(repository.createdAt).toLocaleDateString()}
+                      Created{' '}
+                      {repository.createdAt
+                        ? new Date(repository.createdAt).toLocaleDateString()
+                        : 'Date unavailable'}
                     </span>
                   </div>
 
@@ -286,6 +411,7 @@ function RepositoryManager() {
                     >
                       View
                     </button>
+
                     <button
                       type="button"
                       aria-label={`Edit ${repository.name}`}
@@ -293,6 +419,7 @@ function RepositoryManager() {
                     >
                       Edit
                     </button>
+
                     <button
                       type="button"
                       className="repository-delete-button"
@@ -314,18 +441,26 @@ function RepositoryManager() {
           <div className="repository-detail-summary">
             <p className="section-kicker">REPOSITORY DETAILS</p>
             <h3>{selectedRepository.name}</h3>
-            <p>{selectedRepository.description || 'No description provided.'}</p>
-            <p><strong>ID:</strong> {selectedRepository.id}</p>
+            <p>
+              {selectedRepository.description || 'No description provided.'}
+            </p>
+            <p>
+              <strong>ID:</strong> {selectedRepository.id}
+            </p>
             <p>
               <strong>Created:</strong>{' '}
-              {new Date(selectedRepository.createdAt).toLocaleString()}
+              {selectedRepository.createdAt
+                ? new Date(selectedRepository.createdAt).toLocaleString()
+                : 'Date unavailable'}
             </p>
+
             {selectedRepository.updatedAt && (
               <p>
                 <strong>Last updated:</strong>{' '}
                 {new Date(selectedRepository.updatedAt).toLocaleString()}
               </p>
             )}
+
             <button
               type="button"
               className="repository-secondary-button"
@@ -334,6 +469,7 @@ function RepositoryManager() {
               Close details
             </button>
           </div>
+
           <FileManager
             key={selectedRepository.id}
             ref={fileManagerRef}
