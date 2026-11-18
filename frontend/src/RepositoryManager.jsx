@@ -58,10 +58,8 @@ function RepositoryManager() {
   }
 
   useEffect(() => {
-    if (import.meta.env.MODE !== 'test') {
-      loadRepositories()
-    }
-  }, [])
+  loadRepositories()
+}, [])
 
   function resetForm() {
     setName('')
