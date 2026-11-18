@@ -85,6 +85,7 @@ export default function RepositoryHistory({ repositoryUrl }) {
 
 function HistoryEntry({ event, repositoryUrl }) {
   const [snapshot, setSnapshot] = useState(null)
+  const [files, setFiles] = useState([])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
 
@@ -98,6 +99,7 @@ function HistoryEntry({ event, repositoryUrl }) {
         throw new Error(data?.error || 'Could not load the saved snapshot.')
       }
       setSnapshot(data.event.code)
+      setFiles(Array.isArray(data.event.files) ? data.event.files : [])
     } catch (failure) { setError(failure.message) }
     finally { setPending(false) }
   }
@@ -119,6 +121,7 @@ function HistoryEntry({ event, repositoryUrl }) {
       )}
       {error && <p role="alert">{error}</p>}
       {snapshot !== null && <details open><summary>Saved code snapshot</summary><pre>{snapshot}</pre></details>}
+      {files.map((file) => <details key={file.fileId}><summary>Saved file: {file.name}</summary><pre>{file.content}</pre></details>)}
     </li>
   )
 }

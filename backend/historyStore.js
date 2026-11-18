@@ -1,6 +1,6 @@
 const { randomUUID } = require('node:crypto');
 const db = require('./database');
-const { getCommits } = require('./branchStore');
+const { getCommits, getCommitDetail } = require('./branchStore');
 
 function recordSimulation(repositoryId, preview, actorId) {
   db.prepare(`INSERT INTO merge_simulations
@@ -60,9 +60,8 @@ function getHistoryDetail(repositoryId, id) {
   const event = getHistory(repositoryId).find((item) => item.id === id);
   if (!event) return null;
   if (event.type === 'simulation') return event;
-  const { code } = db.prepare('SELECT code FROM commits WHERE repositoryId = ? AND id = ?')
-    .get(repositoryId, id);
-  return { ...event, code };
+  const { code, files } = getCommitDetail(repositoryId, id);
+  return { ...event, code, files };
 }
 
 module.exports = { recordSimulation, getHistory, getHistoryDetail };
