@@ -61,7 +61,8 @@
 }
 
 .repository-form input,
-.repository-form textarea {
+.repository-form textarea,
+.repository-merge select {
   box-sizing: border-box;
   width: 100%;
   padding: 11px 12px;
@@ -74,9 +75,23 @@
 }
 
 .repository-form input:focus,
-.repository-form textarea:focus {
+.repository-form textarea:focus,
+.repository-merge select:focus {
   outline: 2px solid #818cf8;
   outline-offset: 1px;
+}
+
+.repository-merge {
+  min-width: 0;
+  margin-block: 16px;
+}
+
+.repository-merge summary {
+  cursor: pointer;
+}
+
+.repository-merge section {
+  margin-top: 16px;
 }
 
 .repository-form-actions,

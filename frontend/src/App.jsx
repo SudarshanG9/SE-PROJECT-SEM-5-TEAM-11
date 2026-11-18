@@ -4,6 +4,7 @@ import MergeInstructions from './MergeInstructions'
 import AuthPanel from './AuthPanel'
 import './App.css'
 import RepositoryManager from './RepositoryManager'
+import BranchManager from './BranchManager'
 
 
 const API_URL = '/api/merge'
@@ -199,6 +200,15 @@ async function handleLogout() {
 >
   Repositories
 </button>
+        {currentUser && currentUser.role !== 'viewer' && (
+          <button
+            type="button"
+            aria-current={view === 'branches' ? 'page' : undefined}
+            onClick={() => setView('branches')}
+          >
+            Branches
+          </button>
+        )}
         <button
           type="button"
           aria-current={view === 'simulator' ? 'page' : undefined}
@@ -219,7 +229,8 @@ async function handleLogout() {
 )}
 
       {view === 'guide' && <MergeInstructions />}
-      {view === 'repositories' && <RepositoryManager />}
+      {view === 'repositories' && <RepositoryManager session={session} />}
+      {view === 'branches' && currentUser && <BranchManager />}
       <div hidden={view !== 'simulator'}>
         <section aria-labelledby="code-versions-heading">
           <h2 className="editor-section-title" id="code-versions-heading">

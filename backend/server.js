@@ -50,6 +50,8 @@ const {
   renameBranch,
   deleteBranch,
   createCommit,
+  previewMerge,
+  finalizeMerge,
   deleteRepositoryBranches,
 } = require("./branchStore");
 
@@ -615,6 +617,41 @@ app.post("/api/repositories/:id/commits", (req, res) => {
 
   return res.status(201).json(result);
 });
+
+function validateMergeBranches(req, res, next) {
+  const { sourceBranchId, targetBranchId } = req.body || {};
+  if ([sourceBranchId, targetBranchId].some((id) => typeof id !== "string" || !id.trim()) ||
+      sourceBranchId === targetBranchId) {
+    return res.status(400).json({ error: "Select two different branches." });
+  }
+  if (!getRepositoryById(req.params.id)) {
+    return res.status(404).json({ error: "Repository not found." });
+  }
+  next();
+}
+
+app.post("/api/repositories/:id/merges/preview",
+  authenticate, authorize("merge:create"), validateMergeBranches, (req, res) => {
+    const { sourceBranchId, targetBranchId } = req.body;
+    const result = previewMerge(req.params.id, sourceBranchId, targetBranchId);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    return res.json(result);
+  }
+);
+
+app.post("/api/repositories/:id/merges",
+  authenticate, authorize("merge:approve"), validateMergeBranches, (req, res) => {
+    const { confirmed, sourceHeadCommitId, targetHeadCommitId } = req.body;
+    if (confirmed !== true || [sourceHeadCommitId, targetHeadCommitId].some(
+      (id) => typeof id !== "string" || !id.trim()
+    )) {
+      return res.status(400).json({ error: "Confirm a merge preview before finalizing." });
+    }
+    const result = finalizeMerge(req.params.id, req.body, req.user.id);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    return res.json(result);
+  }
+);
 
 /**
  * POST /api/merge
