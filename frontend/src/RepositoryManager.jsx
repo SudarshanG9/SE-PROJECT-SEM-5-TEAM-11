@@ -8,6 +8,7 @@ const API_URL = `${import.meta.env.VITE_API_URL || ''}/api/repositories`
 function RepositoryManager() {
   const [repositories, setRepositories] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [editingId, setEditingId] = useState(null)
@@ -202,7 +203,8 @@ function RepositoryManager() {
 
   const searchValue = searchTerm.trim().toLowerCase()
 
-  const filteredRepositories = repositories.filter((repository) => {
+  const filteredRepositories = repositories
+  .filter((repository) => {
     const repositoryName = (repository.name || '').toLowerCase()
     const repositoryDescription = (
       repository.description || ''
@@ -212,6 +214,18 @@ function RepositoryManager() {
       repositoryName.includes(searchValue) ||
       repositoryDescription.includes(searchValue)
     )
+  })
+  .sort((a, b) => {
+    if (sortBy === 'name') {
+      return (a.name || '').localeCompare(b.name || '')
+    }
+
+    const dateA = new Date(a.createdAt || 0).getTime()
+    const dateB = new Date(b.createdAt || 0).getTime()
+
+    return sortBy === 'oldest'
+      ? dateA - dateB
+      : dateB - dateA
   })
 
   return (
@@ -313,6 +327,23 @@ function RepositoryManager() {
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Search by name or description..."
           />
+          <label
+  htmlFor="repository-sort"
+  className="repository-search-label"
+>
+  Sort repositories
+</label>
+
+<select
+  id="repository-sort"
+  className="repository-sort-select"
+  value={sortBy}
+  onChange={(event) => setSortBy(event.target.value)}
+>
+  <option value="newest">Newest first</option>
+  <option value="oldest">Oldest first</option>
+  <option value="name">Name (A–Z)</option>
+</select>
 
           {loading ? (
             <p className="repository-empty" role="status">
