@@ -246,6 +246,34 @@ function RepositoryManager() {
           {repositories.length}{' '}
           {repositories.length === 1 ? 'REPOSITORY' : 'REPOSITORIES'}
         </span>
+        <div className="repository-statistics">
+  <div className="repository-stat-card">
+    <span>Total repositories</span>
+    <strong>{repositories.length}</strong>
+  </div>
+
+  <div className="repository-stat-card">
+    <span>With descriptions</span>
+    <strong>
+      {
+        repositories.filter(
+          (repository) => repository.description?.trim()
+        ).length
+      }
+    </strong>
+  </div>
+
+  <div className="repository-stat-card">
+    <span>Without descriptions</span>
+    <strong>
+      {
+        repositories.filter(
+          (repository) => !repository.description?.trim()
+        ).length
+      }
+    </strong>
+  </div>
+</div>
       </div>
 
       {error && (
