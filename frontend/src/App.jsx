@@ -230,7 +230,7 @@ async function handleLogout() {
 
       {view === 'guide' && <MergeInstructions />}
       {view === 'repositories' && <RepositoryManager session={session} />}
-      {view === 'branches' && currentUser && <BranchManager />}
+      {view === 'branches' && currentUser && <BranchManager session={session} />}
       <div hidden={view !== 'simulator'}>
         <section aria-labelledby="code-versions-heading">
           <h2 className="editor-section-title" id="code-versions-heading">

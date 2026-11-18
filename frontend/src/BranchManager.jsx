@@ -3,7 +3,7 @@ import './BranchManager.css'
 
 const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api`
 
-function BranchManager() {
+function BranchManager({ session } = {}) {
   const [repositories, setRepositories] = useState([])
   const [repositoryId, setRepositoryId] = useState('')
   const [branches, setBranches] = useState([])
@@ -262,6 +262,7 @@ function BranchManager() {
     try {
       await request(`${API_BASE}/repositories/${repositoryId}/commits`, {
         method: 'POST',
+        headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
         body: JSON.stringify({
           branchId: selectedBranchId,
           message: commitMessage,

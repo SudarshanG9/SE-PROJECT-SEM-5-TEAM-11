@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import FileManager from './FileManager'
 import RepositoryMerge from './RepositoryMerge'
+import RepositoryHistory from './RepositoryHistory'
 import './RepositoryManager.css'
 
 const API_URL = `${import.meta.env.VITE_API_URL || ''}/api/repositories`
@@ -477,6 +478,11 @@ function RepositoryManager({ session }) {
               <RepositoryMerge repositoryUrl={`${API_URL}/${selectedRepository.id}`} session={session} />
             </details>
           )}
+
+          <details key={`history-${selectedRepository.id}`}>
+            <summary>Open merge and commit history</summary>
+            <RepositoryHistory repositoryUrl={`${API_URL}/${selectedRepository.id}`} />
+          </details>
 
           <FileManager
             key={selectedRepository.id}
