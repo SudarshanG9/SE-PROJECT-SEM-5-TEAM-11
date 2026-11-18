@@ -15,6 +15,10 @@ function recordSimulation(repositoryId, preview, actorId) {
 // Read-only history projection; original commits and merge parents remain intact.
 function getHistory(repositoryId, filters = {}) {
   const commits = getCommits(repositoryId, filters.branchId || null);
+  // Millisecond timestamps can tie. SQLite insertion order keeps children
+  // ahead of their parents even when several commits share one timestamp.
+  const commitOrder = new Map(db.prepare('SELECT id FROM commits WHERE repositoryId = ? ORDER BY rowid DESC')
+    .all(repositoryId).map(({ id }, index) => [id, index]));
   const names = new Map(db.prepare('SELECT id, name FROM branches WHERE repositoryId = ?')
     .all(repositoryId).map(({ id, name }) => [id, name]));
   const users = new Map(db.prepare('SELECT id, name FROM users').all()
@@ -46,7 +50,10 @@ function getHistory(repositoryId, filters = {}) {
     (!filters.to || event.createdAt <= filters.to) &&
     (!query || [event.id, event.message, event.actorName, event.branchName, event.sourceName]
       .some((value) => value?.toLowerCase().includes(query)))
-  ).sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+  ).sort((a, b) => b.createdAt.localeCompare(a.createdAt) ||
+    (a.type === 'simulation') - (b.type === 'simulation') ||
+    (a.type !== 'simulation' && b.type !== 'simulation'
+      ? commitOrder.get(a.id) - commitOrder.get(b.id) : b.id.localeCompare(a.id)));
 }
 
 function getHistoryDetail(repositoryId, id) {

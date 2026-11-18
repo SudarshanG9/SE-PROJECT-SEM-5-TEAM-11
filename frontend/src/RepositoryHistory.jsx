@@ -7,13 +7,13 @@ export default function RepositoryHistory({ repositoryUrl }) {
   const [filters, setFilters] = useState({ q: '', type: '', status: '' })
   const [offset, setOffset] = useState(0)
   const [attempt, setAttempt] = useState(0)
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState('')
+  const [loaded, setLoaded] = useState(null)
+  const requestKey = JSON.stringify([repositoryUrl, filters, offset, attempt])
+  const result = loaded?.key === requestKey ? loaded.result : null
+  const error = loaded?.key === requestKey ? loaded.error : ''
 
   useEffect(() => {
     const controller = new AbortController()
-    setResult(null)
-    setError('')
     const query = new URLSearchParams({ ...filters, limit: String(PAGE_SIZE), offset: String(offset) })
     fetch(`${repositoryUrl}/history?${query}`, { signal: controller.signal })
       .then(async (response) => {
@@ -22,13 +22,13 @@ export default function RepositoryHistory({ repositoryUrl }) {
         if (!Array.isArray(data.events) || !Number.isInteger(data.total)) {
           throw new Error('The history service returned an invalid response.')
         }
-        if (!controller.signal.aborted) setResult(data)
+        if (!controller.signal.aborted) setLoaded({ key: requestKey, result: data, error: '' })
       })
       .catch((failure) => {
-        if (!controller.signal.aborted) setError(failure.message || 'Could not load history.')
+        if (!controller.signal.aborted) setLoaded({ key: requestKey, result: null, error: failure.message || 'Could not load history.' })
       })
     return () => controller.abort()
-  }, [repositoryUrl, filters, offset, attempt])
+  }, [repositoryUrl, filters, offset, attempt, requestKey])
 
   function changeFilter(name, value) {
     setFilters((current) => ({ ...current, [name]: value }))
@@ -68,7 +68,7 @@ export default function RepositoryHistory({ repositoryUrl }) {
           <p role="status">{result.total} history events</p>
           {result.events.length === 0 ? <p>No history matches these filters.</p> : (
             <ol className="history-events">
-              {result.events.map((event) => <HistoryEntry key={event.id} event={event} repositoryUrl={repositoryUrl} />)}
+              {result.events.map((event) => <HistoryEntry key={`${repositoryUrl}/${event.id}`} event={event} repositoryUrl={repositoryUrl} />)}
             </ol>
           )}
           <nav aria-label="History pages">
@@ -87,10 +87,6 @@ function HistoryEntry({ event, repositoryUrl }) {
   const [snapshot, setSnapshot] = useState(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
-  useEffect(() => {
-    setSnapshot(null)
-    setError('')
-  }, [repositoryUrl, event.id])
 
   async function loadSnapshot() {
     setPending(true)

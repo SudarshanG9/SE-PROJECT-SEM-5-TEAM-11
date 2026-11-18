@@ -94,6 +94,29 @@ describe('repository merge and commit history', () => {
     await request(app).get('/api/repositories/missing/history').expect(404);
   });
 
+  it('orders children before parents when timestamps are identical', async () => {
+    db.prepare('UPDATE commits SET createdAt = ? WHERE repositoryId = ?')
+      .run('2026-11-18T00:00:00.000Z', repository.id);
+    const { body } = await history('?type=commit').expect(200);
+    expect(body.events.map(({ id }) => id)).toEqual([source.headCommitId, main.headCommitId]);
+    expect(body.events.every((event) => !Object.hasOwn(event, 'code'))).toBe(true);
+  });
+
+  it('does not record denied preview requests or nonexistent detail reads', async () => {
+    await request(app).post(`/api/repositories/${repository.id}/merges/preview`)
+      .send(selection).expect(401);
+    await request(app).get(`/api/repositories/${repository.id}/history/missing`).expect(404);
+    expect((await history('?type=simulation')).body.total).toBe(0);
+  });
+
+  it('cleans repository simulation history on repository deletion', async () => {
+    await preview().expect(200);
+    repositories.deleteRepository(repository.id);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM merge_simulations WHERE repositoryId = ?')
+      .get(repository.id).n).toBe(0);
+    await history().expect(404);
+  });
+
   it('retains history after source deletion and reads persisted records through a new connection', async () => {
     await preview().expect(200);
     await confirm().expect(200);
