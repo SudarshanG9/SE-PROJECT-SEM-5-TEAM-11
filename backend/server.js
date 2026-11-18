@@ -20,6 +20,7 @@ const {
 const { authenticate, authorize } = require("./rbac/middleware");
 const {
   listUsers,
+  getUserByToken,
   hashPassword,
   createRegisteredUser,
   getUserByEmail,
@@ -28,6 +29,7 @@ const {
   deleteToken,
 } = require("./rbac/users");
 const crypto = require("crypto");
+const { recordSimulation, getHistory, getHistoryDetail } = require("./historyStore");
 
 const MAX_FILE_CONTENT_BYTES = 1024 * 1024;
 
@@ -584,6 +586,47 @@ app.get("/api/repositories/:id/commits", (req, res) => {
   });
 });
 
+// History is read-only and follows the existing repository read-access policy.
+app.get("/api/repositories/:id/history", (req, res) => {
+  if (!getRepositoryById(req.params.id)) {
+    return res.status(404).json({ error: "Repository not found." });
+  }
+  const { branchId, q, type, status, from, to, limit = "25", offset = "0" } = req.query;
+  const values = [branchId, q, type, status, from, to, limit, offset];
+  if (Object.keys(req.query).some((key) => !["branchId", "q", "type", "status", "from", "to", "limit", "offset"].includes(key)) ||
+      values.some((value) => value !== undefined && typeof value !== "string") ||
+      (q && q.length > 200) ||
+      (type && !["commit", "merge", "simulation"].includes(type)) ||
+      (status && !["success", "conflicts"].includes(status)) ||
+      !/^\d+$/.test(limit) || !/^\d+$/.test(offset) ||
+      Number(limit) < 1 || Number(limit) > 100 || !Number.isSafeInteger(Number(offset)) ||
+      [from, to].some((value) => value &&
+        (!/^\d{4}-\d{2}-\d{2}T/.test(value) || !Number.isFinite(Date.parse(value))))) {
+    return res.status(400).json({ error: "Invalid history filters or pagination." });
+  }
+  const filters = { branchId, q, type, status,
+    from: from ? new Date(from).toISOString() : undefined,
+    to: to ? new Date(to).toISOString() : undefined };
+  if (filters.from && filters.to && filters.from > filters.to) {
+    return res.status(400).json({ error: "History start must precede end." });
+  }
+  if (branchId && !getBranchById(req.params.id, branchId)) {
+    return res.status(404).json({ error: "Branch not found." });
+  }
+  const history = getHistory(req.params.id, filters);
+  return res.json({ events: history.slice(Number(offset), Number(offset) + Number(limit)),
+    total: history.length, limit: Number(limit), offset: Number(offset) });
+});
+
+app.get("/api/repositories/:id/history/:eventId", (req, res) => {
+  if (!getRepositoryById(req.params.id)) {
+    return res.status(404).json({ error: "Repository not found." });
+  }
+  const event = getHistoryDetail(req.params.id, req.params.eventId);
+  if (!event) return res.status(404).json({ error: "History event not found." });
+  return res.json({ event });
+});
+
 // Create a commit on a branch
 app.post("/api/repositories/:id/commits", (req, res) => {
   const repositoryId = req.params.id;
@@ -609,6 +652,8 @@ app.post("/api/repositories/:id/commits", (req, res) => {
     branchId,
     message,
     code,
+    authorId: getUserByToken(req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.slice(7) : null)?.id || null,
   });
 
   if (!result) {
@@ -635,6 +680,7 @@ app.post("/api/repositories/:id/merges/preview",
     const { sourceBranchId, targetBranchId } = req.body;
     const result = previewMerge(req.params.id, sourceBranchId, targetBranchId);
     if (result.error) return res.status(result.status).json({ error: result.error });
+    recordSimulation(req.params.id, result, req.user.id);
     return res.json(result);
   }
 );
